@@ -113,15 +113,15 @@ ein echtes Objekt in einer echten Welt wäre?*
 
 ---
 
-## Das Lab: 7 Interface-Elemente in der DNA des Toggles
+## Das Lab: 6 Interface-Elemente in der DNA des Toggles
 
-Unter dem Toggle liegen sieben Glasperlen. **Jede Perle zeigt das echte Element**, gerendert von seinem
+Unter dem Toggle liegen sechs Glasperlen. **Jede Perle zeigt das echte Element**, gerendert von seinem
 eigenen Shader. In Ruhe ist es ein Standbild, das beim Laden einmal unsichtbar gerendert und bei einem
 Theme-Wechsel neu aufgenommen wird. Beim Hover läuft das Element live in der Perle und führt sich selbst
 vor (Autopilot, stumm): Pour gießt, und die „Kamera“ folgt der Perle, Hold lädt sich auf und bestätigt,
 Dial dreht, Tabs springen. Im Vorschau-Modus bekommt jedes Element ein **kompaktes Icon-Layout**, das komplett und zentriert in die Perle passt: Pour eine kurze Röhre, Lens ein kurzes Feld mit der Lupe hinter dem Wort, Tabs zwei Tabs, Drop eine einzelne Mulde. Es läuft immer nur eine Live-Miniatur, gerendert in 160 px und auf 48 px
 skaliert. Ein Klick öffnet das Element im Vollbild, kreisförmig aus der Perle heraus. `‹ ›`, die Punkte oder `[ ]` wechseln zwischen den Elementen, `←` bzw. `Esc` führt zurück.
-Direktlinks: `#lab/pour`, `#lab/hold`, `#lab/dial`, `#lab/tabs`, `#lab/lens`, `#lab/prism`, `#lab/drop`.
+Direktlinks: `#lab/pour`, `#lab/hold`, `#lab/dial`, `#lab/tabs`, `#lab/lens`, `#lab/drop`.
 
 Eine erste Fassung mit 8 Natur-Simulationen wurde verworfen: Sie war nicht auf dem Niveau des Toggles
 und verfehlte die Idee „ein gewöhnliches UI-Element wird außergewöhnlich“.
@@ -133,7 +133,6 @@ und verfehlte die Idee „ein gewöhnliches UI-Element wird außergewöhnlich“
 | **Dial** | Glas-Thermostat 10–30 °C. 41 LED-Segmente von Frostblau zu Glut. Der Knopf ist eine Glas-Halbkugel: Brechung pro Farbkanal (IOR 1,38 / 1,50 / 1,68) mit ausgeprägter chromatischer Aberration auf Punktraster und Pixel-Temperatur, Fresnel-Rand, der den LED-Ring spiegelt, Totalreflexions-Band, Kaustik im Schatten, eingeschlossener Leuchtpunkt als Zeiger. | Drehen mit Rastern (Klick + Haptik), Flick mit Schwung, weiche Anschläge, Scrollen |
 | **Tabs** | Segment-Control, dessen Linse ein Glastropfen ist: Kopf und Schwanz per Smooth-Min verschmolzen, ein Hals hält sie beim Strecken zusammen. Das gewählte Wort wächst per Pixel-Morph, die Farbe wandert mit, ein Lichtband liegt an der Unterkante. | Klicken, Linse ziehen und einrasten lassen, `← →` |
 | **Lens** | Suchfeld mit einer Glaslupe auf dem Cursor. Jeder Buchstabe wirbelt als Pixel aus der Lupe an seinen Platz (Klick in eigener Tonhöhe, Lupe wackelt), Backspace lässt ihn herausfallen, × oder Esc lässt alles zerstieben. **Sucht wirklich im Lab:** Die Vervollständigung erscheint als blasse Pixel, `Tab` oder `→` übernimmt sie, `Enter` öffnet das Element („TOGGLE“ führt zurück). Ohne Treffer schüttelt die Lupe den Kopf und das Licht wird bernsteinfarben. Das Filament wandert mit der Textlänge. Ein echtes, unsichtbares `<input>` sorgt für die Handy-Tastatur und Barrierefreiheit. | Tippen, `Tab`/`→`, `Enter`, `Esc`, × |
-| **Prism** | Farbwähler aus Licht. Eine Spaltlampe wirft weißes Licht in ein Glasprisma, **echt geraytraced** (Snellius, Totalreflexion, Cauchy-Dispersion über 20 Wellenlängen). Das Licht öffnet sich zu einem **durchgehenden, leuchtenden Spektrum-Fächer** mit Dunst und Staub, der auf einen Mattschirm fällt. **Farbe wählen:** die leuchtende Glasperle am Regenbogen entlang auf die gewünschte Farbe ziehen. Sie pulsiert als Einladung, bis man sie zum ersten Mal berührt. Loslassen: Ein Tropfen dieser Farbe kondensiert und fliegt im Bogen in eine Glaskugel, die schwappt und sich umfärbt, der Hex-Code baut sich aus Pixeln. Das Prisma lässt sich zusätzlich drehen (Ringführung beim Hover), das verschiebt den Regenbogen. Der Drehbereich ist gemessen, und das Prisma gleitet dorthin zurück. | Perle ziehen, `↑ ↓`; Prisma drehen, `← →`, Scrollen |
 | **Drop** | Checkliste, bei der jedes Häkchen ein Tropfen flüssiges Glas ist, konsequent **in Draufsicht**. Beim Hover sammelt sich ein runder, zitternder Tropfen über der Mulde. Abhaken: Er fällt von der Kamera weg, wird dabei kleiner, sein Schatten zieht sich unter ihn zusammen, dann landet er und breitet sich zu einer runden Perle aus, die nachwackelt. Dazu Spritzer, Wellenring, Kaustik und „Plip“. Durch die Perle blüht ein Pixel-Häkchen auf, ein Lichtfaden streicht die Aufgabe durch. Rückgängig: Der Tropfen steigt zur Kamera auf und verdunstet. Alle erledigt: Die Tropfen leuchten nacheinander auf, mit Akkord und Schockwelle. | Klicken, `1 2 3`, Hover |
 
 ### Dieselbe Erfahrung wie der Toggle
@@ -153,7 +152,7 @@ und verfehlte die Idee „ein gewöhnliches UI-Element wird außergewöhnlich“
   Pointer-Licht.
 - `domeLens(...)`: ein generierter GLSL-Baustein für klare Glaslinsen und Tropfen (Ellipsoid-Kappe) mit
   Brechung pro Farbkanal, Fresnel, Totalreflexions-Band, Kantenlicht, Cursor-Glanz, Fensterspiegelung und
-  optionaler Färbung. Lens, Prism und Drop nutzen ihn.
+  optionaler Färbung. Lens und Drop nutzen ihn.
 - `engine.js`: Stage (ein WebGL2-Canvas pro Element, Design-Raum-Skalierung, Pixel-Layer scharf und
   weichgezeichnet als Texturen), `PixelMatrix` (Glyph-Morph per Winkel-Pairing und Federn, wie Mond→Sonne),
   3×5-Pixelfont, Sound über das Audio-Kit des Toggles.
@@ -161,9 +160,18 @@ und verfehlte die Idee „ein gewöhnliches UI-Element wird außergewöhnlich“
 
 ### Architektur & Performance
 - `shelf.js` montiert **genau ein** Element. Die Render-Schleife des Toggles pausiert, solange das Lab offen ist.
-- Module werden lazy geladen und beim Hover vorgewärmt. `dispose()` gibt Loop, Listener, Texturen und
-  den WebGL-Kontext frei.
-- Gemessen: alle vier mit 60 fps.
+- **Keine Ruckler beim Laden oder Öffnen:** Shader werden mit `KHR_parallel_shader_compile` abseits des
+  Haupt-Threads kompiliert (`glProgramAsync`). Jedes Element wartet beim Öffnen auf seinen fertigen Shader.
+- **Pixel-Ebene nur bei Änderung:** Ein billiger Recorder bildet pro Frame eine Signatur der Pixel-Zeichnung.
+  Ist sie unverändert, entfallen Neuzeichnen, Weichzeichnen und Upload. Im Ruhezustand kostet ein Element
+  etwa 0,15 ms CPU pro Frame, unter voller Interaktion etwa 0,5 ms.
+- **Standbilder der Perlen:** Hell und Dunkel stammen aus demselben Frame (kein Geisterbild beim Überblenden).
+  Sie werden in `localStorage` gecacht (`STILLS_VERSION` in `shelf.js` erhöhen, wenn sich der Look ändert)
+  und nur erzeugt, wenn kein Element offen ist.
+- Module werden lazy geladen. `dispose()` gibt Loop, Listener, Timer-Warteschlangen, Texturen und den
+  WebGL-Kontext frei. Gemessen: 15 Öffnen-und-Schließen-Zyklen und 30 schnelle Hover-Wechsel ohne Rückstände.
+- `?perf` in der URL: `window.labPerf` misst die CPU-Zeit pro Frame der Lab-Elemente.
+- `prefers-reduced-motion` dämpft Animationen und schaltet den Kreis-Reveal und die Live-Vorschauen ab.
 
 ## Dateien
 - `src/shader.js` – der komplette Fragment-Shader

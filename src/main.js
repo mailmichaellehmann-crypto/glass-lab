@@ -163,7 +163,7 @@ function resize() {
   vw = window.innerWidth; vh = window.innerHeight;
   canvas.width = Math.round(vw * dpr); canvas.height = Math.round(vh * dpr);
   // leave room under the toggle for the lab shelf
-  S = Math.min(ZOOM, (vw - 36) / (TRACK.w + 24), (vh - 300) / (TRACK.h + 120));
+  S = Math.max(0.35, Math.min(ZOOM, (vw - 36) / (TRACK.w + 24), (vh - 300) / (TRACK.h + 120)));
   cx = vw / 2; cy = vh / 2 - 70 * Math.min(1, vh / 900);
   document.documentElement.style.setProperty('--shelf-top', `${cy + (TRACK.h / 2 + 52) * S}px`);
   const travel = TRACK.w / 2 - PAD - KNOB_HALF;
@@ -758,6 +758,8 @@ canvas.addEventListener('dblclick', () => goHome());
 
 window.addEventListener('keydown', e => {
   if (e.target.closest?.('.panel') || labOpen) return;
+  // a focused control (e.g. a lab bead) keeps its own Enter/Space; the toggle's own switch does not
+  if ((e.code === 'Space' || e.code === 'Enter') && e.target.closest?.('button, input, select, a') && e.target !== sw) return;
   const setKeys = Object.keys(ICON_SETS);
   if (e.code === 'Space' || e.code === 'Enter') { e.preventDefault(); sfx._ensure(); toggle(); }
   else if (e.code === 'ArrowLeft') { e.preventDefault(); sfx._ensure(); setTarget(0); }

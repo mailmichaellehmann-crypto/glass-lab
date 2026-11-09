@@ -8,7 +8,6 @@
 
 import { glassStage, PixelMatrix, Spring, textCells, bitmapCells, hexRgb, mix3 } from '../glass/engine.js';
 import { domeLens } from '../glass/lib.glsl.js';
-import { clamp, rand } from '../kit.js';
 
 const TASKS = ['WATER THE PLANTS', 'CALL MOM', 'SHIP THE THING'];
 const ROW = 104, WELL_X = -150, WELL_R = 31, DROP_R = 23, LABEL_X = -96, PITCH = 4.0;
@@ -92,6 +91,7 @@ const BASE = hexRgb('#7fe0ff'), DONE = hexRgb('#3dffa8');
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
   const st = glassStage(root, { frag: FRAG, box: [600, 440], thumb });
+  await st.ready; // the shader compiles off the main thread; show nothing half-made
   const S = st.sfx;
 
   const rows = TASKS.map((label, i) => {

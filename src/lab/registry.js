@@ -27,11 +27,6 @@ export const EXPERIMENTS = [
     bg: '#0b0b0b', accent: '#a9b8ff', load: () => import('./exp/lens.js'),
   },
   {
-    id: 'prism', thumb: { span: 590, fx: 70, fy: 40, still: { demo: true, wait: 1400 } }, hint: 'Drag the bead along the rainbow', name: 'Prism', line: 'a colour picker made of light',
-    how: 'Drag the glowing bead along the rainbow · let go and the colour drops into the sphere · turn the prism to sweep the light',
-    bg: '#0b0b0b', accent: '#ff7ad9', load: () => import('./exp/prism.js'),
-  },
-  {
     id: 'drop', thumb: { span: 118, fx: -150, fy: 0, still: { demo: true, wait: 2100 } }, hint: 'Check a task', name: 'Drop', line: 'a checklist where every tick is a drop of glass',
     how: 'Click a task (or 1 2 3) · hover to see the drop swell · click again to take it back',
     bg: '#0b0b0b', accent: '#7fe0ff', load: () => import('./exp/drop.js'),

@@ -27,15 +27,6 @@ export const PREVIEWS = {
     c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = s * 0.015;
     c.beginPath(); c.arc(s * 0.56, s * 0.5, s * 0.17, 0, TAU); c.stroke();
   },
-  prism(c, t, s) {
-    base(c, s);
-    c.strokeStyle = 'rgba(255,255,255,0.8)'; c.lineWidth = s * 0.02;
-    c.beginPath(); c.moveTo(0, s * 0.55); c.lineTo(s * 0.42, s * 0.52); c.stroke();
-    ['#ff3b3b', '#ffb02f', '#ffe84a', '#4dff6a', '#3aa8ff', '#8a5bff'].forEach((col, i) => {
-      c.strokeStyle = col; c.beginPath(); c.moveTo(s * 0.55, s * 0.52); c.lineTo(s, s * (0.42 + i * 0.07)); c.stroke();
-    });
-    c.strokeStyle = 'rgba(220,230,255,0.6)'; c.beginPath(); c.moveTo(s * 0.5, s * 0.3); c.lineTo(s * 0.66, s * 0.66); c.lineTo(s * 0.34, s * 0.66); c.closePath(); c.stroke();
-  },
   drop(c, t, s) {
     base(c, s);
     c.fillStyle = '#060607'; c.beginPath(); c.arc(s * 0.5, s * 0.58, s * 0.2, 0, TAU); c.fill();

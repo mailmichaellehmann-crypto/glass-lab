@@ -85,6 +85,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const TEXT_X0 = -FIELD[0] + 68, CLEAR_X = FIELD[0] - 34;
   const MAX = Math.floor((FIELD[0] * 2 - 68 - 70) / ADV);
   const st = glassStage(root, { frag: FRAG, box: [FIELD[0] * 2 + 200, FIELD[1] * 2 + 260], thumb });
+  await st.ready; // the shader compiles off the main thread; show nothing half-made
   const S = st.sfx;
 
   // ---------------------------------------------------------------- pixel layers
@@ -162,10 +163,15 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     refreshSuggestion();
   }
   function refuse(amount = 1) { shake = Math.max(shake, amount); S.tick(0.03, 0.9); navigator.vibrate?.([10, 40, 10]); }
+  // letters that arrive in a burst (paste, accepted suggestion) are queued and spun in one by one
+  let queue = [], queueT = 0;
+  const pendingText = () => text() + queue.map(q => q.ch).join('');
+  function enqueue(str, quietFirst = false) { [...str].forEach((ch, i) => queue.push({ ch, quiet: i > 0 || quietFirst })); }
   function accept() {
     if (!suggestion) return false;
-    const rest = suggestion.name.slice(chars.length);
-    [...rest].forEach((ch, i) => setTimeout(() => { addChar(ch, i > 0); syncInput(); }, i * 45));
+    const rest = suggestion.name.slice(pendingText().length);
+    enqueue(rest);
+    syncInput();
     return rest.length > 0;
   }
   function submit() {
@@ -183,7 +189,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
 
   // ---------------------------------------------------------------- the real input
   let input = null;
-  const syncInput = () => { if (input) input.value = text(); };
+  const syncInput = () => { if (input) input.value = pendingText(); };
   if (!thumb) {
     input = document.createElement('input');
     Object.assign(input, { type: 'text', autocomplete: 'off', spellcheck: false, maxLength: MAX, ariaLabel: 'Search the lab' });
@@ -194,10 +200,13 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     root.appendChild(input);
     input.addEventListener('input', () => {
       const want = [...input.value.toUpperCase()].filter(hasGlyph).join('').slice(0, MAX);
-      const have = text();
-      if (want.startsWith(have)) [...want.slice(have.length)].forEach((ch, i) => (i ? setTimeout(() => addChar(ch, true), i * 35) : addChar(ch)));
-      else if (have.startsWith(want)) for (let i = have.length; i > want.length; i--) backspace();
-      else { clearAll(); [...want].forEach((ch, i) => setTimeout(() => addChar(ch, true), 120 + i * 35)); }
+      const have = pendingText(); // what is shown plus what is still queued
+      if (want.startsWith(have)) enqueue(want.slice(have.length));
+      else if (have.startsWith(want)) {
+        let drop = have.length - want.length;
+        while (drop > 0 && queue.length) { queue.pop(); drop--; }
+        while (drop-- > 0) backspace();
+      } else { queue = []; clearAll(); enqueue(want, true); queueT = -0.12; }
       if (input.value !== want) input.value = want;
     });
     input.addEventListener('keydown', e => {
@@ -230,12 +239,12 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   // ---------------------------------------------------------------- autopilot (shelf preview)
   const script = [];
   let demoT = 0;
-  const queue = () => {
+  const demoRound = () => {
     const b = demoT, w = 'DIAL', e = b + 0.5 + w.length * 0.17;
     [...w].forEach((ch, i) => script.push([b + 0.5 + i * 0.17, () => addChar(ch)]));
-    script.push([e + 0.6, submit], [e + 1.8, () => clearAll()], [e + 2.7, queue]);
+    script.push([e + 0.6, submit], [e + 1.8, () => clearAll()], [e + 2.7, demoRound]);
   };
-  if (demo) queue();
+  if (demo) demoRound();
 
   let lastLayout = '';
   st.run((dt, t) => {
@@ -244,6 +253,9 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       while (script.length && script[0][0] <= demoT) script.shift()[1]();
     }
     if (goTimer > 0 && (goTimer -= dt) <= 0) window.dispatchEvent(new CustomEvent('lab:goto', { detail: { id: st.goto } }));
+    // spin queued letters in, one every 40 ms (the first one right away)
+    queueT += dt;
+    if (queue.length && queueT >= 0.04) { const q = queue.shift(); addChar(q.ch, q.quiet); queueT = 0; }
 
     // keep the invisible input over the field (for focus, IME and the phone keyboard)
     if (input) {

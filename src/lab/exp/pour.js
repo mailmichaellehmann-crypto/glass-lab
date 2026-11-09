@@ -124,6 +124,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   thumb = thumb && { ...thumb };
   const TUBE = thumb ? TUBE_ICON : TUBE_FULL;
   const st = glassStage(root, { frag: FRAG, box: [TUBE[0] * 2 + 260, TUBE[1] * 2 + 140], thumb });
+  await st.ready; // the shader compiles off the main thread; show nothing half-made
   const x0 = () => st.cx - TUBE[0] + 8, x1 = () => st.cx + TUBE[0] - 8;
   const beadMin = () => st.cx - TUBE[0] + BEAD - 6, beadMax = () => st.cx + TUBE[0] - BEAD + 6;
 

@@ -2,7 +2,7 @@
 // sampled through the glass by the shader), a springy pixel matrix for morphing glyphs, and
 // a tiny 3×5 pixel font. Mirrors how the toggle itself is built.
 
-import { autosize, pointer, makeCanvas, loop, loseContext, glProgram, fullscreenTriangle, rand, reducedMotion } from '../kit.js';
+import { autosize, pointer, makeCanvas, loop, loseContext, glProgramAsync, fullscreenTriangle, rand, reducedMotion } from '../kit.js';
 import { LIB } from './lib.glsl.js';
 import { Sfx } from '../../audio.js';
 
@@ -83,8 +83,12 @@ export class PixelMatrix {
         p = src && j !== lastJ ? src : { x: src ? src.x : t.x, y: src ? src.y : t.y, vx: src ? src.vx : 0, vy: src ? src.vy : 0, b: 0 };
         lastJ = j;
       }
+      // only a pixel at rest gets a little start delay; one already in flight just re-aims,
+      // otherwise rapid updates (a counting number) would freeze it again and again
+      const settled = p.tx === undefined || (Math.hypot(p.tx - p.x, p.ty - p.y) < 2 && Math.hypot(p.vx || 0, p.vy || 0) < 30);
       p.tx = t.x; p.ty = t.y; p.tb = t.b; p.dying = t.b === 0;
-      p.k = rand(150, 280); p.delay = rand(0, 0.1); p.curl = rand(-1, 1) * this.swirl;
+      if (settled) { p.k = rand(150, 280); p.curl = rand(-1, 1) * this.swirl; p.delay = rand(0, 0.1); }
+      else p.delay = 0;
       p.drag = p.drag ?? rand(0.004, 0.016); p.sx = p.sx ?? 0; p.sy = p.sy ?? 0;
       if (p.vx === undefined) { p.vx = 0; p.vy = 0; }
       if (instant) { p.x = p.tx; p.y = p.ty; p.b = p.tb; p.vx = p.vy = 0; }
@@ -173,12 +177,15 @@ export class Orbit {
 // thumb: { span, fx, fy } renders a miniature: `span` design px fill the container, centred on the
 // design point (fx, fy); it is silent and keeps its drawing buffer so it can be snapshotted.
 const SILENT = new Proxy({}, { get: () => () => {} });
+// ?perf in the URL: window.labPerf collects the CPU time spent per frame
+const PERF = /[?&]perf\b/.test(location.search) ? (window.labPerf = { n: 0, sum: 0, max: 0, reset() { this.n = this.sum = this.max = 0; } }) : null;
 export function glassStage(root, { frag, box, light = [0.43, 0.52, 1], thumb = null }) {
   const canvas = makeCanvas(root);
   const gl = canvas.getContext('webgl2', { antialias: false, premultipliedAlpha: false, preserveDrawingBuffer: !!thumb });
   if (!gl) throw new Error('WebGL2 required');
-  const prog = glProgram(gl, `#version 300 es
-in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag);
+  let prog = null;
+  const ready = glProgramAsync(gl, `#version 300 es
+in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).then(p => { prog = p; st.U = p.U; return st; });
   const tri = fullscreenTriangle(gl);
   const pcan = document.createElement('canvas'), pctx = pcan.getContext('2d');
   const gcan = document.createElement('canvas'), gctx = gcan.getContext('2d');
@@ -195,7 +202,7 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag);
   const texPix = mkTex(0), texGlow = mkTex(1);
 
   const st = {
-    gl, prog, U: prog.U, canvas, S: 1, cx: 0, cy: 0, dpr: 1, w: 0, h: 0, box,
+    gl, U: {}, canvas, S: 1, cx: 0, cy: 0, dpr: 1, w: 0, h: 0, box, ready,
     theme: document.body.classList.contains('light') ? 1 : 0,
     light: [...light], ptr: null, dp: [0, 0], ptrOn: 0, thumb, sfx: thumb ? SILENT : sfx,
     sparks: [], wave: null, sweepT: -99, fxLight: [...light], kick: 0,
@@ -257,7 +264,20 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag);
   };
 
   // draw pixel matrices, centred on design (x, y) offsets relative to the design centre
+  // a cheap recorder: the pixel layer is only redrawn, blurred and uploaded when it changed
+  let lastSig = null, lastW = 0;
+  const rec = {
+    sig: 0, n: 0, globalAlpha: 1, fillStyle: '#fff',
+    fillRect(x, y, w, h) { this.sig = (this.sig * 1.000173 + x * 1.37 + y * 7.13 + w * 3.71 + h * 5.31 + this.globalAlpha * 11.9) % 1e9; this.n++; },
+    translate(x, y) { this.sig += x * 0.917 + y * 0.311; }, scale(x, y) { this.sig += x * 13.7 + y * 17.3; },
+    save() {}, restore() {}, setTransform() {},
+  };
   st.drawPixels = draw => {
+    rec.sig = 0; rec.n = 0; rec.globalAlpha = 1;
+    draw(rec);
+    const sig = rec.sig.toFixed(2) + ':' + rec.n;
+    if (sig === lastSig && lastW === pcan.width) return;
+    lastSig = sig; lastW = pcan.width;
     const res = pcan.width / box[0];
     pctx.setTransform(1, 0, 0, 1, 0, 0);
     pctx.clearRect(0, 0, pcan.width, pcan.height);
@@ -274,7 +294,10 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, gcan);
   };
 
+  let lastFrame = null;
   st.render = (t, set) => {
+    if (!prog) return;
+    lastFrame = [t, set];
     const U = prog.U;
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.useProgram(prog.prog);
@@ -283,7 +306,7 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag);
     gl.uniform1f(U.uDpr, st.dpr);
     gl.uniform1f(U.uTime, t % 1000);
     // a still can force a theme; otherwise follow the toggle's continuous theme live
-    gl.uniform1f(U.uTheme, thumb?.theme ?? window.glassTheme ?? st.theme);
+    gl.uniform1f(U.uTheme, forcedTheme ?? thumb?.theme ?? window.glassTheme ?? st.theme);
     gl.uniform2f(U.uC, st.cx, st.cy);
     gl.uniform1f(U.uScale, st.S);
     gl.uniform2f(U.uPtr, st.dp[0], st.dp[1]);
@@ -303,6 +326,16 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag);
     tri.draw();
   };
 
+  // stills: render the current frame again with a given theme and copy it out (same pose for
+  // both themes, so cross-fading them never ghosts)
+  let forcedTheme = null;
+  canvas.glassCapture = (theme, ctx, size) => {
+    if (!prog || !lastFrame) return false;
+    forcedTheme = theme; st.render(...lastFrame); forcedTheme = null;
+    ctx.clearRect(0, 0, size, size); ctx.drawImage(canvas, 0, 0, size, size);
+    return true;
+  };
+
   // pointer light fades in when the mouse is near the control
   st.trackPointer = dt => {
     const p = st.ptr; if (!p) return;
@@ -314,14 +347,18 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag);
   };
 
   st.run = step => {
-    const L = loop((dt, t) => { st.trackPointer(dt); stepFx(dt); st.kick *= Math.exp(-dt * 3.5); step(dt, t); });
+    const L = loop((dt, t) => {
+      const t0 = performance.now();
+      st.trackPointer(dt); stepFx(dt); st.kick *= Math.exp(-dt * 3.5); step(dt, t);
+      if (PERF) { const ms = performance.now() - t0; PERF.n++; PERF.sum += ms; PERF.max = Math.max(PERF.max, ms); }
+    });
     L.start();
     st.loop = L;
   };
 
   st.dispose = () => {
     st.loop?.dispose(); st.ptr?.dispose(); view.dispose(); if (!thumb) sfx.air(0);
-    gl.deleteTexture(texPix); gl.deleteTexture(texGlow); tri.dispose(); gl.deleteProgram(prog.prog);
+    gl.deleteTexture(texPix); gl.deleteTexture(texGlow); tri.dispose(); if (prog) gl.deleteProgram(prog.prog);
     loseContext(gl); canvas.remove();
   };
   return st;

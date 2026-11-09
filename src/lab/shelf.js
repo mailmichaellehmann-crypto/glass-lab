@@ -8,6 +8,8 @@ import { PREVIEWS } from './previews.js';
 import { reducedMotion } from './kit.js';
 
 const BEAD = 38, RENDER = 160; // miniatures render at 160px and are scaled into the 38px bead
+// Stills are cached across visits. Bump when a control's look changes so the cache is retaken.
+const STILLS_VERSION = 'v9';
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 export function createShelf() {
@@ -47,7 +49,7 @@ export function createShelf() {
     };
     const hide = () => { shelf.classList.remove('captioned'); stopLive(bead); };
     b.addEventListener('pointerenter', show);
-    b.addEventListener('focus', show);
+    b.addEventListener('focus', () => { if (b.matches(':focus-visible')) show(); });
     b.addEventListener('pointerleave', hide);
     b.addEventListener('blur', hide);
     b.addEventListener('click', () => { stopLive(); stage.open(i, b); });
@@ -76,30 +78,51 @@ export function createShelf() {
     setTimeout(() => { me.inst?.dispose(); me.host.remove(); }, 260);
   }
 
-  // ---- stills: render each real control offscreen, once per theme, and keep a frame of each
-  async function shootAll() {
+  // ---- stills: one offscreen render per control; dark and light are taken from the very same
+  // frame (so cross-fading them never ghosts), then cached so later visits need no rendering
+  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const cacheKey = id => `glass-lab:still:${STILLS_VERSION}:${id}:${dpr}`;
+  const drawURL = (ctx, url) => new Promise(res => {
+    const img = new Image();
+    img.onload = () => { ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height); ctx.drawImage(img, 0, 0, ctx.canvas.width, ctx.canvas.height); res(true); };
+    img.onerror = () => res(false);
+    img.src = url;
+  });
+  async function loadCached(bead) {
+    try {
+      const c = JSON.parse(localStorage.getItem(cacheKey(bead.exp.id)) || 'null');
+      if (!c) return false;
+      return (await drawURL(bead.dark, c.dark)) && (await drawURL(bead.light, c.light));
+    } catch { return false; }
+  }
+  const idle = () => new Promise(r => (window.requestIdleCallback ? requestIdleCallback(() => r(), { timeout: 1200 }) : setTimeout(r, 200)));
+  async function shoot(bead) {
     const host = document.createElement('div');
     host.className = 'bead-render';
     document.body.appendChild(host);
-    for (const bead of beads) {
-      for (const theme of [0, 1]) {
-        try {
-          const mod = await bead.exp.load();
-          // stills show the calm, legible resting state, unless a control asks to be caught mid-action
-          const still = bead.exp.thumb.still || {};
-          const inst = await mod.mount(host, { reducedMotion: false, thumb: { ...bead.exp.thumb, theme }, demo: !!still.demo });
-          await wait(still.wait || 700);
-          const c = host.querySelector('canvas');
-          const ctx = theme ? bead.light : bead.dark;
-          if (c) { ctx.clearRect(0, 0, bead.s, bead.s); ctx.drawImage(c, 0, 0, bead.s, bead.s); }
-          inst.dispose();
-          host.replaceChildren();
-        } catch { /* keep the placeholder */ }
+    try {
+      const mod = await bead.exp.load();
+      // stills show the calm, legible resting state, unless a control asks to be caught mid-action
+      const still = bead.exp.thumb.still || {};
+      const inst = await mod.mount(host, { reducedMotion: false, thumb: { ...bead.exp.thumb }, demo: !!still.demo });
+      await wait(still.wait || 700);
+      const c = host.querySelector('canvas');
+      if (c?.glassCapture?.(0, bead.dark, bead.s) && c.glassCapture(1, bead.light, bead.s)) {
+        try { localStorage.setItem(cacheKey(bead.exp.id), JSON.stringify({ dark: bead.dark.canvas.toDataURL('image/png'), light: bead.light.canvas.toDataURL('image/png') })); } catch { /* storage full */ }
       }
-    }
+      inst.dispose();
+    } catch { /* keep the placeholder */ }
     host.remove();
   }
-  if (window.requestIdleCallback) requestIdleCallback(shootAll, { timeout: 1500 }); else setTimeout(shootAll, 400);
+  (async () => {
+    const missing = [];
+    for (const bead of beads) if (!(await loadCached(bead))) missing.push(bead);
+    for (const bead of missing) {
+      await idle();
+      while (document.body.classList.contains('lab-open') || document.hidden) await wait(500); // never compete with a running control
+      await shoot(bead);
+    }
+  })();
 
   // follow the toggle's theme frame by frame (it is continuous while the knob travels)
   let shownTheme = -1;
@@ -165,6 +188,7 @@ function createStage(beads) {
     el.classList.toggle('bright', isBright(exp.bg));
     title.querySelector('.n').textContent = `${String(i + 1).padStart(2, '0')} / ${String(beads.length).padStart(2, '0')}`;
     title.querySelector('h2').textContent = exp.name;
+    history.replaceState(null, '', `#lab/${exp.id}`);
     title.querySelector('p').textContent = exp.how;
     el.querySelector('.lab-hint').textContent = (matchMedia('(hover: none)').matches ? exp.hint.replace(/^Click/, 'Tap').replace('click', 'tap') : exp.hint);
     title.classList.remove('faded');
@@ -223,6 +247,7 @@ function createStage(beads) {
     el.classList.remove('open');
     document.body.classList.remove('lab-open');
     window.dispatchEvent(new Event('lab:close'));
+    history.replaceState(null, '', location.pathname + location.search);
     beads[was].b.focus({ preventScroll: true });
   }
 

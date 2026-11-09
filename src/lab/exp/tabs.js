@@ -92,6 +92,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const RAIL = [(TABS.length - 1) * GAP / 2 + 68, 50];
   const slotX = i => (i - (TABS.length - 1) / 2) * GAP;
   const st = glassStage(root, { frag: FRAG, box: [RAIL[0] * 2 + 100, RAIL[1] * 2 + 100], thumb });
+  await st.ready; // the shader compiles off the main thread; show nothing half-made
   const labels = TABS.map((t, i) => { const m = new PixelMatrix({ size: 3.2, swirl: 5, shyR: 15, shyF: 6 }); m.ox = slotX(i); return m; });
   const cols = TABS.map(t => hexRgb(t.color));
   let sel = 1, head = slotX(1), headV = 0, tail = slotX(1), tailV = 0, drag = null, press = 0, lastSlot = 1;

@@ -59,6 +59,9 @@ export function pointer(el, handlers = {}) {
   };
   const up = e => { if (!p.down) return; p.down = false; handlers.up?.(p, e); };
   const leave = () => { if (!p.down) { p.inside = false; p.x = p.y = -1e4; } };
+  // if the capture is lost (window switch, OS gesture) the press must not stay stuck
+  const lost = e => { if (p.down) { up(e); leave(); } };
+  const blur = () => lost({});
   const ctx = e => e.preventDefault();
   el.addEventListener('pointermove', move);
   el.addEventListener('pointerdown', down);
@@ -66,6 +69,8 @@ export function pointer(el, handlers = {}) {
   el.addEventListener('pointercancel', up);
   el.addEventListener('pointerleave', leave);
   el.addEventListener('contextmenu', ctx);
+  el.addEventListener('lostpointercapture', lost);
+  window.addEventListener('blur', blur);
   p.dispose = () => {
     el.removeEventListener('pointermove', move);
     el.removeEventListener('pointerdown', down);
@@ -73,6 +78,8 @@ export function pointer(el, handlers = {}) {
     el.removeEventListener('pointercancel', up);
     el.removeEventListener('pointerleave', leave);
     el.removeEventListener('contextmenu', ctx);
+    el.removeEventListener('lostpointercapture', lost);
+    window.removeEventListener('blur', blur);
   };
   // decay velocity when the pointer is still
   p.tick = dt => { if (performance.now() - p.t > 60) { p.vx *= Math.exp(-dt * 12); p.vy *= Math.exp(-dt * 12); } };
@@ -90,6 +97,31 @@ export function makeCanvas(root, cls = '') {
 export const FULLSCREEN_VS = `#version 300 es
 in vec2 aPos; out vec2 vUv;
 void main() { vUv = aPos * 0.5 + 0.5; gl_Position = vec4(aPos, 0.0, 1.0); }`;
+
+// Compile and link without blocking the main thread where the browser allows it
+// (KHR_parallel_shader_compile): the promise resolves once the program is ready.
+export async function glProgramAsync(gl, vs, fs) {
+  const ext = gl.getExtension('KHR_parallel_shader_compile');
+  const mk = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); return s; };
+  const prog = gl.createProgram();
+  const v = mk(gl.VERTEX_SHADER, vs), f = mk(gl.FRAGMENT_SHADER, fs);
+  gl.attachShader(prog, v); gl.attachShader(prog, f);
+  gl.bindAttribLocation(prog, 0, 'aPos');
+  gl.linkProgram(prog);
+  if (ext) while (!gl.isContextLost() && !gl.getProgramParameter(prog, ext.COMPLETION_STATUS_KHR)) await new Promise(r => requestAnimationFrame(r));
+  if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
+    const log = [gl.getShaderInfoLog(v), gl.getShaderInfoLog(f), gl.getProgramInfoLog(prog)].filter(Boolean).join('\n');
+    throw new Error(log || 'shader link failed');
+  }
+  gl.deleteShader(v); gl.deleteShader(f);
+  const U = {};
+  const n = gl.getProgramParameter(prog, gl.ACTIVE_UNIFORMS);
+  for (let i = 0; i < n; i++) {
+    const name = gl.getActiveUniform(prog, i).name.replace(/\[0\]$/, '');
+    U[name] = gl.getUniformLocation(prog, name);
+  }
+  return { prog, U };
+}
 
 export function glProgram(gl, vs, fs) {
   const sh = (type, src) => {

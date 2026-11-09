@@ -206,6 +206,7 @@ void main() {
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
   const st = glassStage(root, { frag: FRAG, box: [R_TRAY * 2 + 80, R_TRAY * 2 + 80], thumb });
+  await st.ready; // the shader compiles off the main thread; show nothing half-made
   const digits = new PixelMatrix({ size: 4.4, swirl: 9, shyR: 22, shyF: 9 });
   digits.oy = 4;
 
@@ -292,7 +293,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       stepShown = stepNow;
     }
     const temp = 10 + stepNow * 0.5;
-    if (temp !== shown) { digits.set(textCells(temp.toFixed(1) + '°', 5.2)); shown = temp; root.dataset.value = temp; }
+    if (temp !== shown) { digits.set(textCells(temp.toFixed(1) + '°', 5.2)); shown = temp; }
     digits.step(dt, { ptr: st.local(digits), shy: st.ptrOn * (dragging ? 0 : 1) });
     st.sfx.air(Math.abs(vel) / 7);
     press += ((dragging ? 1 : 0) - press) * Math.min(1, dt * 12);

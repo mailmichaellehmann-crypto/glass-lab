@@ -4,11 +4,10 @@
 // the pixel label fills from the left. Close the loop and it confirms: flash, shockwave, sparks,
 // HOLD becomes a check. Let go early and the light drains back while the glass shakes its head.
 
-import { glassStage, PixelMatrix, Spring, textCells, bitmapCells, sfx, hexRgb, mix3 } from '../glass/engine.js';
-import { clamp, rand } from '../kit.js';
+import { glassStage, PixelMatrix, Spring, textCells, bitmapCells, hexRgb, mix3 } from '../glass/engine.js';
+import { clamp } from '../kit.js';
 
 const HALF = [176, 58];
-const MAXS = 24;
 
 const FRAG = /* glsl */ `
 uniform vec2  uHalf;     // pill half size (with squash)
@@ -144,18 +143,19 @@ const IDLE = hexRgb('#cfd8ff'), GO = hexRgb('#3dffa8'), WARN = hexRgb('#ffb347')
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
   const st = glassStage(root, { frag: FRAG, box: [HALF[0] * 2 + 140, HALF[1] * 2 + 140], thumb });
+  await st.ready; // the shader compiles off the main thread; show nothing half-made
   const label = new PixelMatrix({ size: 5.0, swirl: 12, shyR: 22, shyF: 9 });
   const PITCH = 6.2;
   label.set(textCells('HOLD', PITCH), { instant: true });
 
-  let holding = false, prog = 0, progV = 0, press = 0, beatT = 0, beatPhase = 0, pulse = 0;
+  let holding = false, prog = 0, progV = 0, press = 0, beatT = 0, pulse = 0;
   let state = 'idle', doneT = 0, flash = 0, shake = 0, lift = 0;
   let light = [...IDLE];
   // jelly: sx widens/flattens the pill, sy is the vertical bounce
   const jelly = new Spring(360, 10), bounce = new Spring(300, 12);
 
   const over = ([x, y]) => Math.abs(x - st.cx) < HALF[0] + 6 && Math.abs(y - st.cy) < HALF[1] + 6;
-  const begin = () => { if (state !== 'idle') return; holding = true; st.sfx._ensure(); st.sfx.tick(0.1, 0.6); jelly.kick(2.2); bounce.kick(60); };
+  const begin = () => { if (state !== 'idle') return; holding = true; beatT = 0.6; /* first beat comes quickly */ st.sfx._ensure(); st.sfx.tick(0.1, 0.6); jelly.kick(2.2); bounce.kick(60); };
   const end = () => {
     if (!holding) return;
     holding = false;
