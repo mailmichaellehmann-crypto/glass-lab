@@ -31,4 +31,9 @@ export const EXPERIMENTS = [
     how: 'Click a task (or 1 2 3) · hover to see the drop swell · click again to take it back',
     bg: '#0b0b0b', accent: '#7fe0ff', load: () => import('./exp/drop.js'),
   },
+  {
+    id: 'bridge', thumb: { span: 270, fx: 0, fy: 0, still: { demo: true, wait: 900 } }, hint: 'Drag a lens · or the bridge', name: 'Bridge', line: 'a range slider joined by liquid light',
+    how: 'Drag either lens · push them together to merge · grab the bridge to move the range · ← → (⇧ for the upper value)',
+    bg: '#0b0b0b', accent: '#b07cff', load: () => import('./exp/bridge.js'),
+  },
 ];

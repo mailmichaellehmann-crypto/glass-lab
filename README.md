@@ -113,13 +113,13 @@ ein echtes Objekt in einer echten Welt wäre?*
 
 ---
 
-## Das Lab: 6 Interface-Elemente in der DNA des Toggles
+## Das Lab: 7 Interface-Elemente in der DNA des Toggles
 
 Unter dem Toggle liegen sechs Glasperlen. **Jede Perle zeigt das echte Element**, gerendert von seinem
 eigenen Shader. In Ruhe ist es ein Standbild, das beim Laden einmal unsichtbar gerendert und bei einem
 Theme-Wechsel neu aufgenommen wird. Beim Hover läuft das Element live in der Perle und führt sich selbst
 vor (Autopilot, stumm): Pour gießt, und die „Kamera“ folgt der Perle, Hold lädt sich auf und bestätigt,
-Dial dreht, Tabs springen. Im Vorschau-Modus bekommt jedes Element ein **kompaktes Icon-Layout**, das komplett und zentriert in die Perle passt: Pour eine kurze Röhre, Lens ein kurzes Feld mit der Lupe hinter dem Wort, Tabs zwei Tabs, Drop eine einzelne Mulde. Es läuft immer nur eine Live-Miniatur, gerendert in 160 px und auf 48 px
+Dial dreht, Tabs springen. Im Vorschau-Modus bekommt jedes Element ein **kompaktes Icon-Layout**, das komplett und zentriert in die Perle passt: Pour eine kurze Röhre, Lens ein kurzes Feld mit der Lupe hinter dem Wort, Tabs zwei Tabs, Drop eine einzelne Mulde, Bridge eine kurze Mulde, in der die Linsen im Autopilot zusammenfließen und wieder reißen. Es läuft immer nur eine Live-Miniatur, gerendert in 160 px und auf 48 px
 skaliert. Ein Klick öffnet das Element im Vollbild, kreisförmig aus der Perle heraus. `‹ ›`, die Punkte oder `[ ]` wechseln zwischen den Elementen, `←` bzw. `Esc` führt zurück.
 Direktlinks: `#lab/pour`, `#lab/hold`, `#lab/dial`, `#lab/tabs`, `#lab/lens`, `#lab/drop`.
 
@@ -134,6 +134,7 @@ und verfehlte die Idee „ein gewöhnliches UI-Element wird außergewöhnlich“
 | **Tabs** | Segment-Control, dessen Linse ein Glastropfen ist: Kopf und Schwanz per Smooth-Min verschmolzen, ein Hals hält sie beim Strecken zusammen. Das gewählte Wort wächst per Pixel-Morph, die Farbe wandert mit, ein Lichtband liegt an der Unterkante. | Klicken, Linse ziehen und einrasten lassen, `← →` |
 | **Lens** | Suchfeld mit einer Glaslupe auf dem Cursor. Jeder Buchstabe wirbelt als Pixel aus der Lupe an seinen Platz (Klick in eigener Tonhöhe, Lupe wackelt), Backspace lässt ihn herausfallen, × oder Esc lässt alles zerstieben. **Sucht wirklich im Lab:** Die Vervollständigung erscheint als blasse Pixel, `Tab` oder `→` übernimmt sie, `Enter` öffnet das Element („TOGGLE“ führt zurück). Ohne Treffer schüttelt die Lupe den Kopf und das Licht wird bernsteinfarben. Das Filament wandert mit der Textlänge. Ein echtes, unsichtbares `<input>` sorgt für die Handy-Tastatur und Barrierefreiheit. | Tippen, `Tab`/`→`, `Enter`, `Esc`, × |
 | **Drop** | Checkliste, bei der jedes Häkchen ein Tropfen flüssiges Glas ist, konsequent **in Draufsicht**. Beim Hover sammelt sich ein runder, zitternder Tropfen über der Mulde. Abhaken: Er fällt von der Kamera weg, wird dabei kleiner, sein Schatten zieht sich unter ihn zusammen, dann landet er und breitet sich zu einer runden Perle aus, die nachwackelt. Dazu Spritzer, Wellenring, Kaustik und „Plip“. Durch die Perle blüht ein Pixel-Häkchen auf, ein Lichtfaden streicht die Aufgabe durch. Rückgängig: Der Tropfen steigt zur Kamera auf und verdunstet. Alle erledigt: Die Tropfen leuchten nacheinander auf, mit Akkord und Schockwelle. | Klicken, `1 2 3`, Hover |
+| **Bridge** | Bereichs-Slider mit zwei Glaslinsen, in Draufsicht. Beide Linsen sind **ein** Glaskörper (Smooth-Union) mit Brechung pro Farbkanal; unter jeder Linse steht ihr Grenzwert als Pixel. Dazwischen fließt eine Brücke aus flüssigem Licht durch die Mulde, mit wandernden Lichtperlen, kühl am unteren und warm am oberen Wert; die Skalenpunkte im Bereich leuchten mit. Nähern sich die Linsen, wölben sie sich einander entgegen und verschmelzen zu einem Tropfen mit „Plip“, Wackeln und gemeinsamer Zahl („40-45“). Auseinandergezogen reißt der Tropfen mit Pop und Funken; je weiter weg, desto dünner wird die Brücke, bis sie flackert. Jede Linse trägt ein Filament (unten bei 0, oben bei 100), dazu Streckung beim Ziehen, Rasterklicks alle 5, Funken an den Enden. Die Brücke packen verschiebt den ganzen Bereich; schiebt man eine Linse über die andere, schiebt sie diese mit. | Ziehen, Klick auf die Mulde, `← →`, `⇧← →` |
 
 ### Dieselbe Erfahrung wie der Toggle
 - **Umlaufendes Lichtfilament** mit exakt der Bahnlogik des Toggles (`Orbit`): Bei Pour liegt es

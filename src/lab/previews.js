@@ -27,6 +27,14 @@ export const PREVIEWS = {
     c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = s * 0.015;
     c.beginPath(); c.arc(s * 0.56, s * 0.5, s * 0.17, 0, TAU); c.stroke();
   },
+  bridge(c, t, s) {
+    base(c, s);
+    pill(c, s / 2, s / 2, s * 0.84, s * 0.16); c.fillStyle = '#060607'; c.fill();
+    const g = c.createLinearGradient(s * 0.3, 0, s * 0.7, 0);
+    g.addColorStop(0, '#5b7bff'); g.addColorStop(1, '#ffa630');
+    c.fillStyle = g; c.fillRect(s * 0.3, s * 0.485, s * 0.4, s * 0.03);
+    for (const x of [0.3, 0.7]) { c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = s * 0.015; c.beginPath(); c.arc(s * x, s / 2, s * 0.12, 0, TAU); c.stroke(); }
+  },
   drop(c, t, s) {
     base(c, s);
     c.fillStyle = '#060607'; c.beginPath(); c.arc(s * 0.5, s * 0.58, s * 0.2, 0, TAU); c.fill();
