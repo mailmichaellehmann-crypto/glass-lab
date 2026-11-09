@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#0b0b0b" />
+<title>Glass Toggle — Remix</title>
+<link rel="stylesheet" href="./style.css" />
+</head>
+<body>
+<canvas id="gl" aria-hidden="true"></canvas>
+
+<button id="switch" class="sr-only" role="switch" aria-checked="false" aria-label="Light mode"></button>
+
+<header class="brand">
+  <h1>Glass Toggle <em>Remix</em></h1>
+  <p>Ein WebGL-Glasschalter, von der Kante beleuchtet. Pixel bauen sich beim Ziehen um.</p>
+</header>
+
+<div id="hint"><span class="verb">Click, drag — or pull it out</span><span id="clock"></span></div>
+
+<footer class="keys">
+  <span><kbd>Space</kbd> toggle</span>
+  <span><kbd>←</kbd><kbd>→</kbd> set</span>
+  <span><kbd>1</kbd>–<kbd>4</kbd> icons</span>
+  <span><kbd>R</kbd> shuffle</span>
+  <span><kbd>M</kbd> sound</span>
+  <span><kbd>A</kbd> sun clock</span>
+  <span><kbd>T</kbd> timelapse</span>
+  <span><kbd>S</kbd> shake</span>
+  <span><kbd>H</kbd> panel</span>
+</footer>
+
+<div class="nogl-msg">Dieses Experiment braucht WebGL2.</div>
+
+<script type="module" src="./src/main.js"></script>
+<script type="module">
+  import { createShelf } from './src/lab/shelf.js';
+  createShelf();
+</script>
+</body>
+</html>
