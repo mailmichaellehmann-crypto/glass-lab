@@ -5,6 +5,7 @@
 // glow in the light; the rest wait, dim. The toggle's filament circles the button while it plays.
 
 import { glassStage, PixelMatrix, Spring, textCells, bitmapCells, hexRgb, mix3 } from '../glass/engine.js';
+import { compact } from '../glass/engine.js';
 import { thickGlass } from '../glass/lib.glsl.js';
 import { clamp } from '../kit.js';
 
@@ -82,16 +83,17 @@ void main() {
 
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
-  const NBAR = thumb ? 20 : TUNE.length;
-  const RAIL = thumb ? [96, 30] : [256, 38];
+  const C = !thumb && compact();
+  const NBAR = thumb ? 20 : C ? 28 : TUNE.length;
+  const RAIL = thumb ? [96, 30] : C ? [134, 36] : [256, 38];
   const BR = thumb ? 24 : 30;                           // play button radius
-  const GX = thumb ? (BR + 26) / 2 : (BR + 30) / 2;     // centre the whole group
+  const GX = thumb ? (BR + 26) / 2 : C ? BR + 13 : (BR + 30) / 2;     // centre the whole group
   const RX = GX, BX = GX - RAIL[0] - BR - (thumb ? 22 : 26);
   const PADX = 16;
   const colX = i => RX - RAIL[0] + PADX + ((i + 0.5) * (RAIL[0] * 2 - PADX * 2)) / NBAR;
   const posX = pos => RX - RAIL[0] + PADX + (clamp(pos, 0, NBAR) * (RAIL[0] * 2 - PADX * 2)) / NBAR;
   const xPos = x => ((x - (RX - RAIL[0] + PADX)) / (RAIL[0] * 2 - PADX * 2)) * NBAR;
-  const st = glassStage(root, { frag: FRAG, box: [RAIL[0] * 2 + BR * 2 + 90, RAIL[1] * 2 + (thumb ? 70 : 150)], thumb });
+  const st = glassStage(root, { frag: FRAG, box: [RAIL[0] * 2 + BR * 2 + (C ? 64 : 90), RAIL[1] * 2 + (thumb ? 70 : 150)], thumb });
   await st.ready;
   const S = st.sfx;
   const PIX = thumb ? 3.4 : 4.2, DOT = PIX * 0.82;      // LED columns: pixels with a small gap

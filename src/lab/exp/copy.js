@@ -5,6 +5,7 @@
 // and evaporates (off to the clipboard). The text really is copied. The drop shows a check, COPIED.
 
 import { glassStage, PixelMatrix, Spring, textCells, bitmapCells, hexRgb, mix3 } from '../glass/engine.js';
+import { compact } from '../glass/engine.js';
 import { clamp } from '../kit.js';
 
 const TEXT = 'GLASS-LAB.APP/7F3K';
@@ -107,11 +108,12 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   thumb = thumb && { ...thumb };
   const text = thumb ? '7F3K' : TEXT;
   const PITCH = thumb ? 3.4 : 3.0;
-  const TRAY = thumb ? [96, 26] : [218, 30];
+  const C = !thumb && compact();
+  const TRAY = thumb ? [96, 26] : C ? [170, 30] : [218, 30];
   const R = thumb ? 23 : 27;
   const D1 = [TRAY[0] - R - 4, 0];
   const TX = (-TRAY[0] + D1[0] - R) / 2;            // text centre, between the tray start and the drop
-  const st = glassStage(root, { frag: FRAG, box: [TRAY[0] * 2 + 90, TRAY[1] * 2 + (thumb ? 150 : 210)], thumb });
+  const st = glassStage(root, { frag: FRAG, box: [TRAY[0] * 2 + (C ? 24 : 90), TRAY[1] * 2 + (thumb ? 150 : 210)], thumb });
   await st.ready;
   const S = st.sfx;
   const buzz = pat => st.buzz(pat);

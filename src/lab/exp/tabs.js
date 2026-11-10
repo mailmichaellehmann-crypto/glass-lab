@@ -5,6 +5,7 @@
 // hugs the lens's lower edge, like the toggle.
 
 import { glassStage, PixelMatrix, Spring, Orbit, textCells, sfx, hexRgb, mix3 } from '../glass/engine.js';
+import { compact } from '../glass/engine.js';
 import { sdfNormal } from '../glass/lib.glsl.js';
 import { clamp } from '../kit.js';
 
@@ -89,9 +90,11 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   thumb = thumb && { ...thumb };
   // the shelf miniature shows two tabs; the full control four
   const TABS = thumb ? TABS_ALL.slice(0, 2) : TABS_ALL;
-  const RAIL = [(TABS.length - 1) * GAP / 2 + 68, 50];
+  const C = !thumb && compact();
+  const GAP = C ? 88 : 136, LENS = C ? [46, 32] : [58, 34];
+  const RAIL = [(TABS.length - 1) * GAP / 2 + (C ? 52 : 68), 50];
   const slotX = i => (i - (TABS.length - 1) / 2) * GAP;
-  const st = glassStage(root, { frag: FRAG, box: [RAIL[0] * 2 + 100, RAIL[1] * 2 + 100], thumb });
+  const st = glassStage(root, { frag: FRAG, box: [RAIL[0] * 2 + (C ? 24 : 100), RAIL[1] * 2 + 100], thumb });
   await st.ready; // the shader compiles off the main thread; show nothing half-made
   const labels = TABS.map((t, i) => { const m = new PixelMatrix({ size: 3.2, swirl: 5, shyR: 15, shyF: 6 }); m.ox = slotX(i); return m; });
   const cols = TABS.map(t => hexRgb(t.color));

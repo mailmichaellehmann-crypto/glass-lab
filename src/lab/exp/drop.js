@@ -7,10 +7,11 @@
 // the drops light up in turn.
 
 import { glassStage, PixelMatrix, Spring, textCells, bitmapCells, hexRgb, mix3 } from '../glass/engine.js';
+import { compact } from '../glass/engine.js';
 import { domeLens } from '../glass/lib.glsl.js';
 
 const TASKS = ['WATER THE PLANTS', 'CALL MOM', 'SHIP THE THING'];
-const ROW = 104, WELL_X = -150, WELL_R = 31, DROP_R = 23, LABEL_X = -96, PITCH = 4.0;
+const ROW = 104, WELL_X0 = -150, WELL_R = 31, DROP_R = 23, LABEL_X0 = -96, PITCH = 4.0;
 const rowY = i => (i - 1) * ROW;
 
 const FRAG = /* glsl */ `
@@ -92,8 +93,10 @@ const CHECK = ['.......##', '......##.', '.##..##..', '..####...', '...##....'];
 const BASE = hexRgb('#7fe0ff'), DONE = hexRgb('#3dffa8');
 
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
+  const SHIFT = !thumb && compact() ? 14 : 0;            // centre the wells + labels on a phone
+  const WELL_X = WELL_X0 + SHIFT, LABEL_X = LABEL_X0 + SHIFT;
   thumb = thumb && { ...thumb };
-  const st = glassStage(root, { frag: FRAG, box: [600, 440], thumb });
+  const st = glassStage(root, { frag: FRAG, box: [!thumb && compact() ? 370 : 600, 440], thumb });
   await st.ready; // the shader compiles off the main thread; show nothing half-made
   const S = st.sfx;
 

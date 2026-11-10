@@ -7,6 +7,7 @@
 // through amber to green. Enter with a strong password: saved. A weak one: the field shakes its head.
 
 import { glassStage, PixelMatrix, Spring, textCells, bitmapCells, hasGlyph, hexRgb, mix3 } from '../glass/engine.js';
+import { compact } from '../glass/engine.js';
 import { thickGlass } from '../glass/lib.glsl.js';
 import { clamp } from '../kit.js';
 
@@ -102,16 +103,17 @@ void main() {
 
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
-  const FIELD = thumb ? [118, 26] : [214, 30];
+  const C = !thumb && compact();
+  const FIELD = thumb ? [118, 26] : C ? [170, 30] : [214, 30];
   const FY = thumb ? -14 : -24;
   const LR = thumb ? 22 : 27;                            // lens radius
   const PARK = FIELD[0] - LR - 6;                        // lens home (x)
   const PITCH = thumb ? 3.0 : 3.6, DOT = PITCH * 0.84;
   const CW = PITCH * 4;                                  // one character cell
   const X0 = -FIELD[0] + 22 + PITCH;                     // first character
-  const TUBE = thumb ? [96, 7] : [170, 8];
-  const TY = thumb ? 30 : 42, TX = thumb ? -18 : -40;
-  const st = glassStage(root, { frag: FRAG, box: [FIELD[0] * 2 + 70, (TY + 60) * 2], thumb });
+  const TUBE = thumb ? [96, 7] : C ? [122, 8] : [170, 8];
+  const TY = thumb ? 30 : 42, TX = thumb ? -18 : C ? -46 : -40;
+  const st = glassStage(root, { frag: FRAG, box: [FIELD[0] * 2 + (C ? 24 : 70), (TY + 60) * 2], thumb });
   await st.ready;
   const S = st.sfx;
   const buzz = pat => st.buzz(pat);

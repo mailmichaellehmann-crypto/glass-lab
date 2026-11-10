@@ -7,6 +7,7 @@
 // length of the query, like the toggle's. A real (invisible) <input> brings the phone keyboard.
 
 import { glassStage, PixelMatrix, Spring, Orbit, textCells, bitmapCells, hasGlyph, hexRgb, mix3 } from '../glass/engine.js';
+import { compact } from '../glass/engine.js';
 import { domeLens } from '../glass/lib.glsl.js';
 import { EXPERIMENTS } from '../registry.js';
 import { clamp, rand } from '../kit.js';
@@ -81,10 +82,11 @@ const TARGETS = [...EXPERIMENTS.map(e => ({ id: e.id, name: e.name.toUpperCase()
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
   // the shelf miniature is a short field; the full control is long
-  const FIELD = thumb ? FIELD_ICON : FIELD_FULL;
+  const C = !thumb && compact();
+  const FIELD = thumb ? FIELD_ICON : C ? [176, 40] : FIELD_FULL;
   const TEXT_X0 = -FIELD[0] + 68, CLEAR_X = FIELD[0] - 34;
   const MAX = Math.floor((FIELD[0] * 2 - 68 - 70) / ADV);
-  const st = glassStage(root, { frag: FRAG, box: [FIELD[0] * 2 + 200, FIELD[1] * 2 + 260], thumb });
+  const st = glassStage(root, { frag: FRAG, box: [FIELD[0] * 2 + (C ? 40 : 200), FIELD[1] * 2 + 260], thumb });
   await st.ready; // the shader compiles off the main thread; show nothing half-made
   const S = st.sfx;
 

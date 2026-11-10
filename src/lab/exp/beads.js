@@ -8,6 +8,7 @@
 // When everything is done a chain of light runs along the rail's lower lip.
 
 import { glassStage, PixelMatrix, Spring, textCells, hasGlyph, hexRgb, mix3 } from '../glass/engine.js';
+import { compact } from '../glass/engine.js';
 import { clamp } from '../kit.js';
 
 const NB = 14, MAXC = 10;                     // beads drawn at once (only the visible ones are sent)
@@ -188,9 +189,10 @@ void main() {
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
   // the rail grows with its tasks up to RMAX; past that the row scrolls inside it, endlessly
-  const RMIN = thumb ? 84 : 150, RMAX = thumb ? 84 : 300, RH = thumb ? 28 : 34;
+  const C = !thumb && compact();
+  const RMIN = thumb ? 84 : C ? 120 : 150, RMAX = thumb ? 84 : C ? 172 : 300, RH = thumb ? 28 : 34;
   const HH = thumb ? 20 : 23, GAP = 8, PAD = thumb ? 9 : 11;
-  const st = glassStage(root, { frag: FRAG, box: [RMAX * 2 + 80, RH * 2 + (thumb ? 60 : 150)], thumb });
+  const st = glassStage(root, { frag: FRAG, box: [RMAX * 2 + (C ? 24 : 80), RH * 2 + (thumb ? 60 : 150)], thumb });
   await st.ready;
   const S = st.sfx;
   const buzz = pat => st.buzz(pat);

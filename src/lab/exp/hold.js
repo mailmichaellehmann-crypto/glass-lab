@@ -5,6 +5,7 @@
 // HOLD becomes a check. Let go early and the light drains back while the glass shakes its head.
 
 import { glassStage, PixelMatrix, Spring, textCells, bitmapCells, hexRgb, mix3 } from '../glass/engine.js';
+import { compact } from '../glass/engine.js';
 import { clamp } from '../kit.js';
 
 const HALF = [176, 58];
@@ -142,7 +143,7 @@ const IDLE = hexRgb('#cfd8ff'), GO = hexRgb('#3dffa8'), WARN = hexRgb('#ffb347')
 
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
-  const st = glassStage(root, { frag: FRAG, box: [HALF[0] * 2 + 140, HALF[1] * 2 + 140], thumb });
+  const st = glassStage(root, { frag: FRAG, box: [HALF[0] * 2 + (!thumb && compact() ? 40 : 140), HALF[1] * 2 + 140], thumb });
   await st.ready; // the shader compiles off the main thread; show nothing half-made
   const label = new PixelMatrix({ size: 5.0, swirl: 12, shyR: 22, shyF: 9 });
   const PITCH = 6.2;

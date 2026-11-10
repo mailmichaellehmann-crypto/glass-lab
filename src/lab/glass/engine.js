@@ -58,6 +58,10 @@ export function bitmapCells(rows, pitch, b = 1) {
 // ------------------------------------------------------------------ springy pixel matrix
 // Holds live pixels; set() retargets them to a new glyph. Pixels are paired by sweep angle so a
 // change reads as one coherent swirl (the toggle's moon→sun trick), with per-pixel stagger.
+// phones: the controls switch to compact layouts (shorter tracks, same size handles and text) so they
+// can be shown near full size instead of shrunk to half
+export const compact = () => !!window.matchMedia?.('(max-width: 600px)').matches;
+
 export class PixelMatrix {
   constructor({ size = 4.2, swirl = 10, shyR = 34, shyF = 18 } = {}) { this.px = []; this.size = size; this.swirl = swirl; this.ox = 0; this.oy = 0; this.shyR = shyR; this.shyF = shyF; }
 
@@ -254,7 +258,7 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).t
       st.S = Math.min(s.w, s.h) / thumb.span;
       st.cx = s.w / 2 - (thumb.fx || 0) * st.S; st.cy = s.h / 2 - (thumb.fy || 0) * st.S;
     } else {
-      st.S = Math.min(1.15, (s.w - 40) / box[0], (s.h - 190) / box[1]);
+      st.S = Math.min(1.15, (s.w - (s.w < 600 ? 14 : 40)) / box[0], (s.h - 190) / box[1]);
       st.cx = s.w / 2; st.cy = s.h / 2 - 10;
     }
     const res = s.dpr * Math.max(st.S, 1);

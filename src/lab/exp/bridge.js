@@ -7,6 +7,7 @@
 // carries the toggle's filament, orbiting from the bottom at 0 to the top at 100.
 
 import { glassStage, PixelMatrix, Spring, Orbit, textCells, hexRgb, mix3 } from '../glass/engine.js';
+import { compact } from '../glass/engine.js';
 import { clamp } from '../kit.js';
 
 const TRACK_FULL = [300, 30], TRACK_ICON = [108, 30]; // tray half size (full / shelf miniature)
@@ -148,11 +149,12 @@ void main() {
 
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
-  const TRACK = thumb ? TRACK_ICON : TRACK_FULL;
+  const C = !thumb && compact();
+  const TRACK = thumb ? TRACK_ICON : C ? [168, 30] : TRACK_FULL;
   const X0 = -TRACK[0] + 28, X1 = TRACK[0] - 28; // where 0 and 100 sit
   const toX = v => X0 + (v / 100) * (X1 - X0);
   const toV = x => ((x - X0) / (X1 - X0)) * 100;
-  const st = glassStage(root, { frag: FRAG, box: [TRACK[0] * 2 + 140, TRACK[1] * 2 + 170], thumb });
+  const st = glassStage(root, { frag: FRAG, box: [TRACK[0] * 2 + (C ? 60 : 140), TRACK[1] * 2 + 170], thumb });
   await st.ready; // the shader compiles off the main thread; show nothing half-made
   const S = st.sfx;
   // haptics only for a real control the user has touched (never in the shelf miniature)

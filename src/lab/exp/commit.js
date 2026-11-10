@@ -7,6 +7,7 @@
 // The letters are shy: they scatter out of the lens's way. Enter or Space slides it for you.
 
 import { glassStage, PixelMatrix, Spring, Orbit, textCells, bitmapCells, hexRgb, mix3 } from '../glass/engine.js';
+import { compact } from '../glass/engine.js';
 import { domeLens } from '../glass/lib.glsl.js';
 import { clamp } from '../kit.js';
 
@@ -86,10 +87,11 @@ void main() {
 
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
-  const TRACK = thumb ? [112, 28] : [262, 34];
+  const C = !thumb && compact();
+  const TRACK = thumb ? [112, 28] : C ? [168, 34] : [262, 34];
   const R = thumb ? 25 : 31;
   const X0 = -TRACK[0] + R + 3, X1 = TRACK[0] - R - 3, MAX = X1 - X0;
-  const st = glassStage(root, { frag: FRAG, box: [TRACK[0] * 2 + 120, TRACK[1] * 2 + 150], thumb });
+  const st = glassStage(root, { frag: FRAG, box: [TRACK[0] * 2 + (C ? 30 : 120), TRACK[1] * 2 + 150], thumb });
   await st.ready;
   const S = st.sfx;
   const buzz = pat => st.buzz(pat);

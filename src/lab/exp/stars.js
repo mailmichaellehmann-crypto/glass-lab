@@ -7,6 +7,7 @@
 // and a shockwave. The rating word sits in pixels underneath.
 
 import { glassStage, PixelMatrix, Spring, textCells, hexRgb, mix3 } from '../glass/engine.js';
+import { compact } from '../glass/engine.js';
 import { clamp } from '../kit.js';
 
 const R = 27;                     // star outer radius
@@ -211,10 +212,11 @@ void main() {
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
   const N = thumb ? 3 : 5;
-  const GAP = thumb ? 66 : 74;
+  const C = !thumb && compact();
+  const GAP = thumb ? 66 : C ? 62 : 74;
   const TRAY = [((N - 1) * GAP) / 2 + 44, 40];
   const starX = i => (i - (N - 1) / 2) * GAP;
-  const st = glassStage(root, { frag: FRAG, box: [TRAY[0] * 2 + 120, 250], thumb });
+  const st = glassStage(root, { frag: FRAG, box: [TRAY[0] * 2 + (C ? 30 : 120), 250], thumb });
   await st.ready;
   const S = st.sfx;
   const buzz = pat => st.buzz(pat);

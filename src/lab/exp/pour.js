@@ -5,6 +5,7 @@
 // reads through the bead as magnified pixels; hitting 0 or 100 lands with sparks and a shockwave.
 
 import { glassStage, PixelMatrix, Spring, Orbit, textCells, bitmapCells, sfx, hexRgb, mix3 } from '../glass/engine.js';
+import { compact } from '../glass/engine.js';
 import { sdfNormal } from '../glass/lib.glsl.js';
 import { clamp } from '../kit.js';
 
@@ -122,8 +123,9 @@ const COLD = hexRgb('#5b7bff'), MID = hexRgb('#b07cff'), HOT = hexRgb('#ffa630')
 
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
-  const TUBE = thumb ? TUBE_ICON : TUBE_FULL;
-  const st = glassStage(root, { frag: FRAG, box: [TUBE[0] * 2 + 260, TUBE[1] * 2 + 140], thumb });
+  const C = !thumb && compact();
+  const TUBE = thumb ? TUBE_ICON : C ? [138, 40] : TUBE_FULL;
+  const st = glassStage(root, { frag: FRAG, box: [TUBE[0] * 2 + (C ? 150 : 260), TUBE[1] * 2 + 140], thumb });
   await st.ready; // the shader compiles off the main thread; show nothing half-made
   const x0 = () => st.cx - TUBE[0] + 8, x1 = () => st.cx + TUBE[0] - 8;
   const beadMin = () => st.cx - TUBE[0] + BEAD - 6, beadMax = () => st.cx + TUBE[0] - BEAD + 6;
@@ -134,7 +136,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const orbit = new Orbit(level);
   const digits = new PixelMatrix({ size: 4.0, swirl: 8, shyR: 18, shyF: 7 });
   const speaker = new PixelMatrix({ size: 3.8, swirl: 6, shyR: 16, shyF: 6 });
-  speaker.ox = thumb ? -9999 : -TUBE[0] - 22 - 52;
+  speaker.ox = thumb ? -9999 : -TUBE[0] - 22 - (C ? 32 : 52);
 
   const toLevel = x => (x - x0()) / (x1() - x0());
   const overTube = ([x, y]) => Math.abs(x - st.cx) < TUBE[0] + 22 && Math.abs(y - st.cy) < TUBE[1] + 30;
