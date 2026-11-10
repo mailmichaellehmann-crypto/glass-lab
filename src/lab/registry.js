@@ -86,4 +86,14 @@ export const EXPERIMENTS = [
     how: 'Type a password · slide the glass lens over the dots to read them · tap the lens to reveal all · the tube shows its strength · Enter to save',
     bg: '#0b0b0b', accent: '#b38bff', load: () => import('./exp/secret.js'),
   },
+  {
+    id: 'hue', thumb: { span: 300, fx: 0, fy: 0, still: { demo: true, wait: 1200 } }, hint: 'Push the glass ball over the colours', name: 'Hue', line: 'a colour picker: a glass ball that soaks up colour',
+    how: 'Drag the ball (or tap the floor) to pick a colour · let go and a drop settles in the palette · tap a drop to return to it · scroll or ↑ ↓ for brightness, ← → for hue',
+    bg: '#0b0b0b', accent: '#ff8a5c', load: () => import('./exp/hue.js'),
+  },
+  {
+    id: 'like', thumb: { span: 250, fx: 0, fy: 0, still: { demo: true, wait: 1700 } }, hint: 'Tap it · or hold and let go', name: 'Like', line: 'a heart cut from glass that fills with light',
+    how: 'Tap the heart to like, tap again to take it back · press and hold to charge it, let go for a burst · Space or L',
+    bg: '#0b0b0b', accent: '#ff3d77', load: () => import('./exp/like.js'),
+  },
 ];
