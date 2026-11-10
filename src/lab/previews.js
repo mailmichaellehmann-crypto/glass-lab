@@ -19,6 +19,24 @@ function pill(c, x, y, w, h) {
 }
 
 export const PREVIEWS = {
+  blank(c, t, s) { base(c, s); },
+  picker(c, t, s) {
+    base(c, s);
+    c.fillStyle = '#060607'; c.beginPath(); c.roundRect(s * 0.18, s * 0.22, s * 0.64, s * 0.56, s * 0.1); c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.75)';
+    for (const [y, a] of [[0.33, 0.25], [0.5, 1], [0.67, 0.25]]) { c.globalAlpha = a; c.fillRect(s * 0.3, s * y - s * 0.02, s * 0.14, s * 0.04); c.fillRect(s * 0.56, s * y - s * 0.02, s * 0.14, s * 0.04); }
+    c.globalAlpha = 1;
+    glow(c, s * 0.5, s * 0.5, s * 0.4, 'rgba(255,179,107,A)', 0.25);
+    pill(c, s / 2, s / 2, s * 0.76, s * 0.16); c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = s * 0.014; c.stroke();
+  },
+  commit(c, t, s) {
+    base(c, s);
+    pill(c, s / 2, s / 2, s * 0.84, s * 0.22); c.fillStyle = '#060607'; c.fill();
+    glow(c, s * 0.3, s / 2, s * 0.3, 'rgba(255,106,136,A)', 0.35);
+    c.fillStyle = 'rgba(255,255,255,0.4)';
+    for (let i = 0; i < 3; i++) { const x = s * (0.5 + i * 0.08); c.fillRect(x, s * 0.47, s * 0.03, s * 0.06); }
+    c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = s * 0.014; c.beginPath(); c.arc(s * 0.27, s / 2, s * 0.13, 0, TAU); c.stroke();
+  },
   lens(c, t, s) {
     base(c, s);
     pill(c, s / 2, s / 2, s * 0.86, s * 0.26); c.fillStyle = '#060607'; c.fill();

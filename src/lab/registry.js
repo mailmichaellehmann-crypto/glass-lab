@@ -41,4 +41,14 @@ export const EXPERIMENTS = [
     how: 'Hover to pour light in · tap to rate · tap again to clear · ← → or 0–5',
     bg: '#0b0b0b', accent: '#ffc23a', load: () => import('./exp/stars.js'),
   },
+  {
+    id: 'picker', thumb: { span: 300, fx: 0, fy: 0, still: { demo: true, wait: 1150 } }, hint: 'Drag or flick a drum', name: 'Picker', line: 'a time picker under a glass rod',
+    how: 'Drag or flick a drum · tap a row · scroll · ↑ ↓ turns, ← → switches drum',
+    bg: '#0b0b0b', accent: '#ffb36b', load: () => import('./exp/picker.js'),
+  },
+  {
+    id: 'commit', thumb: { span: 300, fx: 0, fy: 0, still: { demo: true, wait: 1350 } }, hint: 'Slide the lens all the way', name: 'Commit', line: 'slide to confirm, with rising tension',
+    how: 'Drag the lens to the end to send · let go early and it springs back · Enter slides it for you',
+    bg: '#0b0b0b', accent: '#ff6a88', load: () => import('./exp/commit.js'),
+  },
 ];

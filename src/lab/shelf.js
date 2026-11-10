@@ -9,7 +9,7 @@ import { reducedMotion } from './kit.js';
 
 const BEAD = 38, RENDER = 160; // miniatures render at 160px and are scaled into the 38px bead
 // Stills are cached across visits. Bump when a control's look changes so the cache is retaken.
-const STILLS_VERSION = 'v15';
+const STILLS_VERSION = 'v17';
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 export function createShelf() {
@@ -37,8 +37,9 @@ export function createShelf() {
     list.appendChild(li);
     const bead = { exp, i, b, s: BEAD * dpr, dark: cvDark.getContext('2d'), light: cvLight.getContext('2d'), lightEl: cvLight };
     beads.push(bead);
-    PREVIEWS[exp.id](bead.dark, i * 1.7, bead.s); // placeholder until the real stills are ready
-    PREVIEWS[exp.id](bead.light, i * 1.7, bead.s);
+    const placeholder = PREVIEWS[exp.id] || PREVIEWS.blank; // until the real stills are ready
+    placeholder(bead.dark, i * 1.7, bead.s);
+    placeholder(bead.light, i * 1.7, bead.s);
 
     const show = () => {
       cap.querySelector('.n').textContent = String(i + 1).padStart(2, '0');
