@@ -7,7 +7,12 @@
 // pointerdown, where the controls first ask for sound. So every kit is also woken up on those events:
 // its context is created or resumed and a silent sample is played, which unlocks it for good.
 const kits = new Set();
+// Play even when the iPhone is set to silent: Safari (16.4+) puts Web Audio in the "playback" audio
+// session, like a music app, instead of the default that the ring/silent switch mutes.
+const playThroughSilent = () => { try { if (navigator.audioSession && navigator.audioSession.type !== 'playback') navigator.audioSession.type = 'playback'; } catch { /* not supported */ } };
+playThroughSilent();
 const unlock = () => {
+  playThroughSilent();
   for (const k of kits) {
     if (!k.enabled) continue;
     const ctx = k._ensure();
