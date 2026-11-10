@@ -30,7 +30,7 @@ inklusive dessen, was nicht funktioniert hat. Ein neues Element ist fertig, wenn
 - Text und Werte stehen als **Pixelmatrix** (3×5-Schrift, `textCells`) **unter dem Glas** und werden durch es gebrochen.
 - Pixel **morphen über Federn**, sind **scheu** (weichen dem Zeiger aus) und **ziehen nach** bei Bewegung.
 - Wörter in Großbuchstaben, kurz (MEH, GOOD, WOW).
-- **Pixel mit Lücke** wie eine LED-Anzeige (`size` ≈ 0,85 × Raster): das wirkt scharf. Pixel, die sich berühren, wirken weich. Unter einer flachen Glasfläche den Text 1:1 zeigen, nicht vergrößern (sonst wird neu abgetastet und unscharf).
+- **Pixel mit Lücke** wie eine LED-Anzeige (`size` ≈ 0,85 × Raster): das wirkt scharf. Die Engine erzwingt das jetzt selbst (die Pixelmatrix erkennt ihr Raster), setzt jedes Pixel auf ganze Gerätepixel und tastet die Pixel-Textur ohne Glättung ab. Pixel, die sich berühren, wirken weich. Unter einer flachen Glasfläche den Text 1:1 zeigen, nicht vergrößern (sonst wird neu abgetastet und unscharf).
 
 ## 4. Bewegung & Gefühl
 - **Alles federt** (`Spring`): Quetschen beim Drücken, Strecken beim Ziehen, Nachwackeln beim Loslassen.

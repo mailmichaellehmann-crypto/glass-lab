@@ -61,6 +61,13 @@ export class PixelMatrix {
   constructor({ size = 4.2, swirl = 10, shyR = 34, shyF = 18 } = {}) { this.px = []; this.size = size; this.swirl = swirl; this.ox = 0; this.oy = 0; this.shyR = shyR; this.shyF = shyF; }
 
   set(cells, { instant = false } = {}) {
+    // learn the grid of what is shown, so the pixels keep a small gap like an LED display (crisp)
+    let pitch = Infinity;
+    for (let i = 1; i < Math.min(cells.length, 80); i++) {
+      const dx = Math.abs(cells[i].x - cells[i - 1].x), dy = Math.abs(cells[i].y - cells[i - 1].y);
+      for (const d of [dx, dy]) if (d > 0.01 && d < pitch) pitch = d;
+    }
+    if (Number.isFinite(pitch)) this.pitch = pitch;
     const key = (x, y) => Math.atan2(y, x) + Math.hypot(x, y) * 1e-3;
     const live = this.px.filter(p => !p.dying).sort((a, b) => key(a.tx, a.ty) - key(b.tx, b.ty));
     const tgt = [...cells].sort((a, b) => key(a.x, a.y) - key(b.x, b.y));
@@ -128,7 +135,7 @@ export class PixelMatrix {
   }
 
   draw(ctx, gain = 1) {
-    const s = this.size;
+    const s = Math.min(this.size, (this.pitch || Infinity) * 0.86);
     for (const p of this.px) {
       const b = p.b * gain; if (b < 0.004) continue;
       ctx.globalAlpha = Math.min(1, b);
@@ -200,6 +207,10 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).t
     return t;
   };
   const texPix = mkTex(0), texGlow = mkTex(1);
+  // the pixel layer is sampled without smoothing: pixel edges stay hard instead of smearing by a texel
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texPix);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
 
   const st = {
     gl, U: {}, canvas, S: 1, cx: 0, cy: 0, dpr: 1, w: 0, h: 0, box, ready,
@@ -283,9 +294,25 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).t
     const res = pcan.width / box[0];
     pctx.setTransform(1, 0, 0, 1, 0, 0);
     pctx.clearRect(0, 0, pcan.width, pcan.height);
-    pctx.setTransform(res, 0, 0, res, box[0] / 2 * res, box[1] / 2 * res); // origin = design centre
     pctx.fillStyle = '#fff';
-    draw(pctx);
+    // every square lands on whole device pixels (origin = design centre): no anti-aliased fuzz
+    const ox = box[0] / 2 * res, oy = box[1] / 2 * res;
+    let T = { s: 1, x: 0, y: 0 };
+    const stack = [];
+    const snap = {
+      get globalAlpha() { return pctx.globalAlpha; }, set globalAlpha(v) { pctx.globalAlpha = v; },
+      fillStyle: '#fff',
+      fillRect(x, y, w, h) {
+        const X0 = Math.round((T.x + x * T.s) * res + ox), Y0 = Math.round((T.y + y * T.s) * res + oy);
+        const X1 = Math.max(X0 + 1, Math.round((T.x + (x + w) * T.s) * res + ox)), Y1 = Math.max(Y0 + 1, Math.round((T.y + (y + h) * T.s) * res + oy));
+        pctx.fillRect(X0, Y0, X1 - X0, Y1 - Y0);
+      },
+      translate(x, y) { T = { ...T, x: T.x + x * T.s, y: T.y + y * T.s }; },
+      scale(k) { T = { ...T, s: T.s * k }; },
+      save() { stack.push(T); }, restore() { T = stack.pop() || { s: 1, x: 0, y: 0 }; }, setTransform() {},
+    };
+    pctx.setTransform(1, 0, 0, 1, 0, 0);
+    draw(snap);
     gctx.setTransform(1, 0, 0, 1, 0, 0);
     gctx.clearRect(0, 0, gcan.width, gcan.height);
     if (canFilter) { gctx.filter = `blur(${2 * res}px)`; gctx.drawImage(pcan, 0, 0, gcan.width, gcan.height); gctx.filter = 'none'; }

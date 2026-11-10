@@ -10,6 +10,13 @@ import { thickGlass } from '../glass/lib.glsl.js';
 import { clamp } from '../kit.js';
 
 const L = hexRgb('#ff8a3d'), CALM = hexRgb('#ffb36b'), RING = hexRgb('#ffe2a8');
+// every minute on the dial has its colour: red near zero, through orange, gold and violet to cyan at sixty
+const STOPS = [[0, '#ff3d5e'], [5, '#ff8a3d'], [15, '#ffd23d'], [30, '#9b8cff'], [60, '#3dd9ff']].map(([m, c]) => [m, hexRgb(c)]);
+const palette = m => {
+  m = clamp(m, 0, 60);
+  for (let i = 0; i < STOPS.length - 1; i++) if (m <= STOPS[i + 1][0]) return mix3(STOPS[i][1], STOPS[i + 1][1], (m - STOPS[i][0]) / (STOPS[i + 1][0] - STOPS[i][0]));
+  return STOPS[STOPS.length - 1][1];
+};
 const TAU = Math.PI * 2;
 const MAX = 3600;                                       // one turn = sixty minutes
 const fmt = s => { s = Math.ceil(s - 1e-6); return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`; };
@@ -20,12 +27,23 @@ uniform vec3  uDisk;           // disc centre (abs), radius
 uniform float uAng;            // disc rotation
 uniform float uFrac;           // remaining fraction of the ring (0..1)
 uniform vec3  uL;
-uniform float uEnergy, uRing, uTh, uFilOn, uPress, uLift;
+uniform float uEnergy, uRing, uTh, uFilOn, uPress, uLift, uPulse, uBeat, uRainbow;
 
 float fil(vec2 p) { return filament(p, uDisk.xy, length(p - uDisk.xy) - uDisk.z, uTh, 0.42); }
+// the dial's colours by minute (the same stops as in JS)
+vec3 dialCol(float m) {
+  vec3 c0 = vec3(1.0, 0.24, 0.37), c1 = vec3(1.0, 0.54, 0.24), c2 = vec3(1.0, 0.82, 0.24), c3 = vec3(0.61, 0.55, 1.0), c4 = vec3(0.24, 0.85, 1.0);
+  if (m < 5.0) return mix(c0, c1, m / 5.0);
+  if (m < 15.0) return mix(c1, c2, (m - 5.0) / 10.0);
+  if (m < 30.0) return mix(c2, c3, (m - 15.0) / 15.0);
+  return mix(c3, c4, clamp((m - 30.0) / 30.0, 0.0, 1.0));
+}
+vec3 hue(float h) { return clamp(abs(mod(h * 6.0 + vec3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0); }
 
 vec3 scene(vec2 q, vec2 sp, float frost, out float cover) {
   vec3 col = pageBg(sp);
+  vec3 arcC = uL;
+  float comet = 0.0, ledLit = 0.0;
   vec2 d = q - uWell.xy;
   float sdW = length(d) - uWell.z;
   col = shadowed(col, length(d - vec2(0.0, 14.0)) - uWell.z, length(d - vec2(0.0, 1.5)) - uWell.z, 0.0);
@@ -34,20 +52,30 @@ vec3 scene(vec2 q, vec2 sp, float frost, out float cover) {
     vec3 tc = tray(col, sdW, length(d - vec2(0.0, 8.0)) - uWell.z, q, uWell.xy, vec2(uWell.z));
     // the lit arc of minutes glows on the floor of the well, from twelve o'clock clockwise
     float a = atan(d.x, -d.y); a = a < 0.0 ? a + 6.2831853 : a;
-    float lit = smoothstep(uFrac * 6.2831853 + 0.02, uFrac * 6.2831853 - 0.02, a) * step(0.0005, uFrac);
+    float headA = uFrac * 6.2831853;
+    float lit = smoothstep(headA + 0.02, headA - 0.02, a) * step(0.0005, uFrac);
     float ringR = (uDisk.z + uWell.z) * 0.5;
     float band = exp(-pow((length(d) - ringR) / 7.0, 2.0));
-    tc = emitC(tc, uL, band * lit * (0.18 + 0.5 * uRing) * uEnergy);
-    tc = emitC(tc, uL, band * uRing * 0.5 * uEnergy);
+    // each minute glows in its own colour; while ringing a rainbow chases round
+    arcC = mix(dialCol(a / 6.2831853 * 60.0), hue(a / 6.2831853 - uTime * 0.6), uRainbow);
+    // the heartbeat: every second a comet of light runs back from the head along the arc
+    comet = exp(-pow((a - (headA - uPulse * 1.4)) * ringR / 14.0, 2.0)) * (1.0 - uPulse) * lit;
+    ledLit = max(lit, uRing) * band;
+    tc = emitC(tc, arcC, band * lit * (0.2 + 0.35 * uBeat + 0.5 * uRing) * uEnergy);
+    tc = emitC(tc, mix(arcC, vec3(1.0), 0.4), band * comet * 0.9 * uEnergy);
+    tc = emitC(tc, arcC, band * uRing * 0.5 * uEnergy);
     // the disc's shadow in the well
     float ds = length(d - vec2(0.0, 9.0 + uLift * 6.0 - uPress * 4.0)) - uDisk.z;
     tc *= 1.0 - (1.0 - smoothstep(-8.0, 18.0 + uLift * 8.0, ds)) * mix(0.5, 0.18, uTheme);
     col = mix(tc, col, smoothstep(-0.6, 0.6, sdW));
-    wash = (lit * 0.9 + uRing * 0.8) * band * (1.0 - smoothstep(-0.6, 0.6, sdW));
+    wash = (lit * (0.9 + 0.5 * comet) + uRing * 0.8) * band * (1.0 - smoothstep(-0.6, 0.6, sdW));
   }
   float f = max(fil(q), 0.0);
   col = emitC(col, uL, filamentWash(f) * 0.4 * uFilOn * uEnergy);
-  return ink(col, q, frost, vec2(0.0), wash, mix(uL, vec3(1.0), 0.2), cover);
+  vec3 r = ink(col, q, frost, vec2(0.0), wash, mix(arcC, vec3(1.0), 0.15), cover);
+  // the lit LEDs take their minute's colour outright; the comet runs white-hot through them
+  r = mix(r, arcC * (0.85 + 0.5 * comet + 0.3 * uBeat) + comet * 0.35, clamp(cover, 0.0, 1.0) * ledLit * mix(0.9, 0.8, uTheme));
+  return r;
 }
 
 ${thickGlass('thick', 'scene')}
@@ -67,7 +95,7 @@ void main() {
     vec2 tg = vec2(-n.y, n.x);
     n = normalize(n + tg * sin((pa - uAng) * 56.0) * 0.35 * rim);
     vec3 kc = thick(p, sp, n, depth, uDisk.xy, vec2(uDisk.z), 18.0, 18.0, 0.08,
-                    filamentScatter(max(fil(p), 0.0)) * uFilOn * 0.8 + uRing * 0.5, uL);
+                    filamentScatter(max(fil(p), 0.0)) * uFilOn * 0.8 + uRing * 0.5 + uBeat * 0.45, uL);
     col = mix(kc, col, smoothstep(-0.7, 0.7, sd));
   }
   col = mix(col, drawFilament(col, fil(p), uL, uEnergy * (1.0 + uKick * 0.5)), uFilOn);
@@ -85,13 +113,13 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
 
   // ---------------------------------------------------------------- state
   let secs = 0, state = 'idle';                         // idle · set · wind · run · pause · ring
-  let ang = 0, angShow = 0, drag = null, ringT = 0, bellT = 0, lastMin = 0, lastSec = -1, press = 0, lift = 0, shake = 0;
+  let beat = 0, pulseT = 1, ang = 0, angShow = 0, drag = null, ringT = 0, bellT = 0, lastMin = 0, lastSec = -1, press = 0, lift = 0, shake = 0;
   const disc = new Spring(380, 10);
   const time = new PixelMatrix({ size: thumb ? 3.2 : 4.1, swirl: 6, shyR: 14, shyF: 4 });
   const word = new PixelMatrix({ size: 2.4, swirl: 8, shyR: 12, shyF: 4 });
   word.oy = thumb ? 0 : 26;
   time.oy = thumb ? 0 : -6;
-  let shownTime = null, shownWord = null;
+  let shownTime = null, shownWord = null, shownMinBeat = -1;
   const angFor = s => (s / MAX) * TAU;
 
   const startRun = () => { if (secs > 0.5) { state = 'run'; S.ping(true); st.glint(); st.pulse(0.5); buzz(8); } else { state = 'idle'; secs = 0; } };
@@ -182,6 +210,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     if (state === 'wind' && mins !== lastMin) { S.tick(0.35 + Math.min(1, mins / 60) * 0.6, 0.6); disc.kick(mins > lastMin ? -1.2 : 1.2); }
     lastMin = mins;
     const sec = Math.ceil(secs - 1e-6);
+    if (state === 'run' && sec !== lastSec) { beat = sec <= 10 ? 1 : 0.6; pulseT = 0; }
     if (state === 'run' && sec !== lastSec && sec <= 10 && sec > 0) {
       const urgent = sec <= 3;
       S.tick(0.6 + (10 - sec) * 0.03, urgent ? 1 : 0.55);
@@ -197,7 +226,12 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     lift += ((st.ptrOn > 0.5 && !drag ? 1 : 0) - lift) * Math.min(1, dt * 8);
     const dj = disc.step(dt) * 0.03;
     const ringing = state === 'ring' ? 0.5 + 0.5 * Math.cos(ringT * Math.PI * 2 / 0.42) : 0;
-    if (state !== 'ring') st.light = mix3(st.light, state === 'pause' ? CALM : L, Math.min(1, dt * 4));
+    // the light is the colour of the minute the disc stands on; it breathes with each second
+    beat *= Math.exp(-dt * (state === 'run' ? 3.2 : 5));
+    pulseT = Math.min(1, pulseT + dt * 1.4);
+    if (state === 'wind' && mins !== shownMinBeat) { beat = Math.max(beat, 0.5); pulseT = 0; shownMinBeat = mins; }
+    const headCol = palette(secs / 60);
+    if (state !== 'ring') st.light = mix3(st.light, state === 'pause' ? mix3(headCol, CALM, 0.5) : headCol, Math.min(1, dt * 6));
 
     const tw = fmt(secs);
     if (tw !== shownTime) { time.set(textCells(tw, thumb ? 3.8 : 4.8), { instant: shownTime !== null }); shownTime = tw; }
@@ -235,6 +269,9 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       gl.uniform1f(U.uFilOn, secs > 0.5 || state === 'ring' ? 1 : 0.3);
       gl.uniform1f(U.uPress, press);
       gl.uniform1f(U.uLift, lift);
+      gl.uniform1f(U.uPulse, reducedMotion ? 1 : pulseT);
+      gl.uniform1f(U.uBeat, beat);
+      gl.uniform1f(U.uRainbow, state === 'ring' ? Math.min(1, ringT * 3) : 0);
     });
   });
 

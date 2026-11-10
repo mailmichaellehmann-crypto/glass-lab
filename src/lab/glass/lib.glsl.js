@@ -156,7 +156,7 @@ vec3 ink(vec3 base, vec2 p, float frost, vec2 ca, float wash, vec3 light, out fl
   inkc = mix(inkc + light * wash * 0.9, inkc + vec3(0.25, 0.08, 0.0) * wash, uTheme);
   cover = clamp(a.g, 0.0, 1.0);
   vec3 col = mix(base, inkc, clamp(a, 0.0, 1.0));
-  col += mix(vec3(1.0, 0.8, 0.6), light, 0.35) * icon(uGlow, p) * 0.62 * (1.0 - uTheme);
+  col += mix(vec3(1.0, 0.8, 0.6), light, 0.35) * icon(uGlow, p) * 0.38 * (1.0 - uTheme); // a faint halo; more blurs the edges
   return col;
 }
 
