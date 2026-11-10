@@ -56,4 +56,19 @@ export const EXPERIMENTS = [
     how: 'Type 2580 on the keypad or your keyboard (or a wrong code to see it shake) · ⌫ deletes',
     bg: '#0b0b0b', accent: '#9b8cff', load: () => import('./exp/pin.js'),
   },
+  {
+    id: 'bloom', thumb: { span: 330, fx: 0, fy: 0, still: { demo: true, wait: 1500 } }, hint: 'Hold the drop · slide to a bubble', name: 'Bloom', line: 'a radial menu that flowers out of glass',
+    how: 'Hold the drop and slide to a bubble, let go to choose · a quick tap keeps it open · ← → and Enter',
+    bg: '#0b0b0b', accent: '#c8a2ff', load: () => import('./exp/bloom.js'),
+  },
+  {
+    id: 'beads', thumb: { span: 275, fx: 0, fy: 0, still: { demo: true, wait: 1500 } }, hint: 'Type a word · press Enter', name: 'Beads', line: 'tags as glass beads on a string of light',
+    how: 'Type a word and press Enter · drag a bead to reorder · pull it off the string to remove · ⌫ in an empty field pops the last',
+    bg: '#0b0b0b', accent: '#ff9ad5', load: () => import('./exp/beads.js'),
+  },
+  {
+    id: 'copy', thumb: { span: 330, fx: 0, fy: -22, still: { demo: true, wait: 1350 } }, hint: 'Click to copy the link', name: 'Copy', line: 'a copy button that divides like a cell',
+    how: 'Click the drop or the link (or press Enter / ⌘C) · the link is really copied',
+    bg: '#0b0b0b', accent: '#8fb8ff', load: () => import('./exp/copy.js'),
+  },
 ];

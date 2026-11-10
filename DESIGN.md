@@ -68,6 +68,8 @@ inklusive dessen, was nicht funktioniert hat. Ein neues Element ist fertig, wenn
 - Zählende Zahlen (Prozent, Zähler) wechseln **sofort** (`set(..., { instant: true })`), sonst kommen die Pixelfedern nie zur Ruhe und die Zahl verschmiert.
 - Das Zeiger-Licht darf flache Kanten nicht von unten anstrahlen (harte Striche); wo der Zeiger meist unterhalb ist, nur leicht folgen lassen.
 - Beim Loslassen zählt die Position der Hand, nicht die des nachziehenden Objekts.
+- Flache oder schmale Glaskörper bekommen keinen scharfen Glanzpunkt: er schrumpft zu einem Fleck, der wie ein verirrtes Pixel wirkt. Kapseln zeigen stattdessen einen langen Glanzstreifen, eckige Zellen nur weichen Schimmer.
+- Im engen Rand flacher Glaskörper bündelt die Brechung einen hellen Fleck daneben (Lichtschnur, Lichtkante) zu einem Punkt, der wie ein verirrtes Pixel wirkt: die Brechung zum äußersten Rand hin ausblenden (`thick *= smoothstep(0.0, 0.35, u)`).
 
 ## 10. Ablauf für ein neues Element
 1. `src/lab/exp/<id>.js` mit `mount(root, { reducedMotion, thumb, demo })`.

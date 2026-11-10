@@ -20,6 +20,30 @@ function pill(c, x, y, w, h) {
 
 export const PREVIEWS = {
   blank(c, t, s) { base(c, s); },
+  bloom(c, t, s) {
+    base(c, s);
+    const cols = ['255,181,71', '255,122,69', '255,95,138', '197,139,255', '127,178,255', '61,255,168'];
+    for (let i = 0; i < 6; i++) {
+      const a = -Math.PI / 2 + i * Math.PI / 3, x = s / 2 + Math.cos(a) * s * 0.3, y = s / 2 + Math.sin(a) * s * 0.3;
+      c.strokeStyle = 'rgba(255,255,255,0.25)'; c.lineWidth = s * 0.02; c.beginPath(); c.moveTo(s / 2, s / 2); c.lineTo(x, y); c.stroke();
+      c.fillStyle = `rgba(${cols[i]},0.45)`; c.beginPath(); c.arc(x, y, s * 0.08, 0, TAU); c.fill();
+    }
+    c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = s * 0.014; c.beginPath(); c.arc(s / 2, s / 2, s * 0.12, 0, TAU); c.stroke();
+  },
+  beads(c, t, s) {
+    base(c, s);
+    c.strokeStyle = 'rgba(255,154,213,0.7)'; c.lineWidth = s * 0.012; c.beginPath(); c.moveTo(s * 0.08, s / 2); c.lineTo(s * 0.92, s / 2); c.stroke();
+    [0.3, 0.5, 0.7].forEach(x => { pill(c, s * x, s / 2, s * 0.17, s * 0.1); c.fillStyle = 'rgba(255,255,255,0.12)'; c.fill(); c.strokeStyle = 'rgba(255,255,255,0.5)'; c.stroke(); });
+  },
+  copy(c, t, s) {
+    base(c, s);
+    pill(c, s / 2, s * 0.58, s * 0.8, s * 0.18); c.fillStyle = '#060607'; c.fill();
+    c.fillStyle = 'rgba(255,255,255,0.6)'; c.fillRect(s * 0.18, s * 0.565, s * 0.36, s * 0.03);
+    c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = s * 0.014;
+    c.beginPath(); c.arc(s * 0.74, s * 0.58, s * 0.1, 0, TAU); c.stroke();
+    c.beginPath(); c.arc(s * 0.62, s * 0.36, s * 0.08, 0, TAU); c.stroke();
+    glow(c, s * 0.62, s * 0.36, s * 0.15, 'rgba(143,184,255,A)', 0.4);
+  },
   pin(c, t, s) {
     base(c, s);
     pill(c, s / 2, s / 2, s * 0.8, s * 0.26); c.fillStyle = '#060607'; c.fill();

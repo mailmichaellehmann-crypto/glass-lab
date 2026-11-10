@@ -120,11 +120,15 @@ vec3 cellGlass(vec2 p, vec2 sp, float sd) {
   vec3 n3 = normalize(vec3(n.x * (1.0 - u), -n.y * (1.0 - u), hgt + 0.03));
   vec3 V = vec3(0.0, 0.0, -1.0);
   float thick = 6.0 + 12.0 * hgt;
+  // no refraction in the outermost rim: there it focuses one bright spot nearby (the string, the tray's lit
+  // lip) into a dot that reads like a stray pixel; the rim keeps its reflections and edge light
+  thick *= smoothstep(0.0, 0.35, u);
   vec3 tR = refract(V, n3, 1.0 / 1.44), tG = refract(V, n3, 1.0 / 1.5), tB = refract(V, n3, 1.0 / 1.57);
   vec2 oR = vec2(tR.x, -tR.y) / max(-tR.z, 0.3) * thick;
   vec2 oG = vec2(tG.x, -tG.y) / max(-tG.z, 0.3) * thick;
   vec2 oB = vec2(tB.x, -tB.y) / max(-tB.z, 0.3) * thick;
-  float frost = 0.04 + 0.3 * pow(1.0 - u, 5.0);
+  // the tight rim focuses single pixels into bright ghost dots: let it scatter them instead
+  float frost = 0.04 + 0.85 * pow(1.0 - u, 3.0);
   vec3 kc = vec3(scene(p + oR, sp + oR * uScale, frost).r, scene(p + oG, sp + oG * uScale, frost).g, scene(p + oB, sp + oB * uScale, frost).b);
   kc = mix(kc, kc * 0.86 + vec3(0.1), 1.0 - uTheme);
   kc = emitC(kc, uL, (filamentScatter(caret(p)) * 0.7 * uCaretOn + (uErr + uMerge * 0.6) * (0.25 + 0.5 * (1.0 - u))) * uEnergy);
@@ -139,7 +143,7 @@ vec3 cellGlass(vec2 p, vec2 sp, float sd) {
   vec2 tp = clamp((uPtr - uTrayC) / vec2(160.0, 60.0), vec2(-1.0, -1.0), vec2(1.0, 0.0));
   vec3 Ld = normalize(mix(vec3(-0.4, 0.65, 0.62), vec3(tp.x, -tp.y + 0.4, 0.8), uPtrOn * 0.35));
   float s1 = max(dot(Rv, Ld), 0.0);
-  kc += pow(s1, 200.0) * 1.5 + pow(s1, 20.0) * mix(0.07, 0.11, uTheme);
+  kc += pow(s1, 10.0) * mix(0.1, 0.14, uTheme) * smoothstep(0.2, 0.6, u); // a soft sheen only: a sharp glint shrank to a dot
   if (uSweep < 1.2) {
     float s = dot(p - uTrayC, normalize(vec2(1.0, -0.75)));
     float pos = mix(-uTray.x - 40.0, uTray.x + 40.0, clamp(uSweep / 0.8, 0.0, 1.0));
