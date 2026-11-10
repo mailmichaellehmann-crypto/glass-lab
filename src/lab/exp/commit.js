@@ -23,7 +23,7 @@ uniform vec2  uKnob;           // lens centre
 uniform vec2  uKR;             // lens radii
 uniform vec2  uTrail;          // x of the trail start, x of its end (design, absolute)
 uniform vec3  uL, uL0;         // current light colour, colour at the start of the trail
-uniform float uProg, uTension, uDone, uEnergy, uLift, uPress, uTh, uShim;
+uniform float uProg, uTension, uDone, uFlood, uEnergy, uLift, uPress, uTh, uShim;
 
 float sdSeg(vec2 p, vec2 a, vec2 b, out float h) {
   vec2 pa = p - a, ba = b - a;
@@ -42,7 +42,8 @@ vec3 scene(vec2 q, vec2 sp, float frost) {
   // the trail of liquid light behind the lens: thicker, brighter and faster with tension
   float h;
   float len = max(uTrail.y - uTrail.x, 1.0);
-  float d = sdSeg(q, vec2(uTrail.x, uC.y), vec2(uTrail.y, uC.y), h) - (4.5 + 4.5 * uTension + 1.5 * uDone);
+  // after the discharge the trail swells until the liquid light fills the whole tray
+  float d = sdSeg(q, vec2(uTrail.x, uC.y), vec2(uTrail.y, uC.y), h) - mix(4.5 + 4.5 * uTension, hs.y + 3.0, uFlood);
   float flow = 0.84 + 0.16 * sin((h * len - uTime * (70.0 + 260.0 * uTension)) / 19.0);
   // builds with progress; after the discharge it flashes once (the kick) and settles to a calm glow
   float amp = smoothstep(2.0, 24.0, len) * ((0.18 + 0.85 * uProg) * (1.0 - 0.55 * uDone) + uKick * 0.5 * uDone);
@@ -52,7 +53,9 @@ vec3 scene(vec2 q, vec2 sp, float frost) {
   col = emitC(col, tcol, glow * amp * 0.2 * uEnergy);
   if (sdT < 2.0) {
     vec3 tc = tray(col, sdT, sdRoundBox(q - uC - vec2(0.0, 6.0), hs, hs.y), q, uC, hs);
-    tc = emitC(tc, tcol, (core * 1.1 + glow) * flow * amp * uEnergy);
+    // a full tray glows calmer in the middle and brighter where the liquid meets the rim
+    float fieldShade = mix(1.0, 0.62 + 0.55 * smoothstep(-hs.y * 0.9, -1.0, d), uFlood);
+    tc = emitC(tc, tcol, (core * 1.1 * fieldShade + glow) * mix(flow, 1.0, uFlood * 0.6) * amp * uEnergy);
     tc = emitC(tc, uL, filamentWash(f) * 0.4 * uEnergy);
     col = mix(tc, col, smoothstep(-0.6, 0.6, sdT));
   }
@@ -92,7 +95,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   // ---------------------------------------------------------------- state
   let phase = 'idle';             // idle · drag · auto · done · return
   let kx = X0, kv = 0, target = X0, autoT = 0, doneT = 0, doneMix = 0, tension = 0, lastTenth = 0;
-  let press = 0, lift = 0, grab = 0;
+  let press = 0, lift = 0, grab = 0, flood = 0, floodV = 0;
   const jelly = new Spring(360, 10);
   const orbit = new Orbit(0);
   const label = new PixelMatrix({ size: 3.3, swirl: 10, shyR: 30, shyF: 16 });
@@ -185,6 +188,8 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     const building = phase === 'drag' || phase === 'auto';
     tension += ((building ? prog : 0) - tension) * Math.min(1, dt * (building ? 10 : 4));
     doneMix += ((phase === 'done' ? 1 : 0) - doneMix) * Math.min(1, dt * 6);
+    // the flood: rises like liquid after the discharge, drains first when it resets
+    { const k = 70, c = 2 * Math.sqrt(k) * 0.9; floodV += (-k * (flood - (phase === 'done' ? 1 : 0)) - c * floodV) * dt; flood = clamp(flood + floodV * dt, 0, 1); }
     // rising ticks while the tension builds
     const tenth = Math.floor(prog * 10);
     if (building && tenth > lastTenth) { S.tick(0.3 + prog * 0.7, 0.35 + prog * 0.5); st.pulse(0.1 + prog * 0.3); jelly.kick(-0.5 - prog); }
@@ -237,6 +242,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       gl.uniform1f(U.uProg, prog);
       gl.uniform1f(U.uTension, tension);
       gl.uniform1f(U.uDone, doneMix);
+      gl.uniform1f(U.uFlood, flood);
       gl.uniform1f(U.uEnergy, 0.7 + lift * 0.1 + st.kick * 0.25);
       gl.uniform1f(U.uLift, lift);
       gl.uniform1f(U.uPress, press);
