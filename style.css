@@ -206,7 +206,6 @@ body.light .bead::after { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6), ins
   color: rgba(255,255,255,0.92);
   --chrome: rgba(255,255,255,0.88); --chrome-dim: rgba(255,255,255,0.45); --chrome-bg: rgba(255,255,255,0.08);
 }
-.lab-stage.bright { color: rgba(0,0,0,0.85); --chrome: rgba(20,16,12,0.85); --chrome-dim: rgba(20,16,12,0.45); --chrome-bg: rgba(20,16,12,0.06); }
 .lab-stage.open {
   clip-path: circle(150vmax at var(--ox, 50%) var(--oy, 50%));
   visibility: visible;
@@ -215,6 +214,7 @@ body.light .bead::after { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6), ins
 .lab-root, .lab-host { position: absolute; inset: 0; }
 .lab-host { opacity: 0; transition: opacity 0.7s ease 0.15s; }
 .lab-host.in { opacity: 1; }
+.lab-host.out { opacity: 0; transition: opacity 0.4s ease; pointer-events: none; }
 .lab-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
 .lab-back {
@@ -232,14 +232,14 @@ body.light .bead::after { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6), ins
 }
 .lab-title .n { font: 500 10px/1 var(--font); letter-spacing: 0.18em; color: var(--chrome-dim); }
 .lab-title h2 { margin: 6px 0 4px; font: 600 22px/1.1 var(--font); letter-spacing: -0.02em; color: var(--chrome); }
-.lab-title p { margin: 0; font-size: 12.5px; color: var(--chrome-dim); }
+.lab-title p { margin: 0; font-size: 12.5px; line-height: 1.5; color: var(--chrome-dim); text-wrap: pretty; }
 .lab-title.faded p { opacity: 0; transition: opacity 1.5s ease; }
 .lab-stage:hover .lab-title.faded p { opacity: 1; }
 
 .lab-nav {
   position: absolute; left: 50%; bottom: calc(22px + env(safe-area-inset-bottom)); transform: translateX(-50%);
   display: flex; align-items: center; gap: 10px; z-index: 3;
-  padding: 6px 8px; border-radius: 999px; background: var(--chrome-bg);
+  padding: 6px 8px; border-radius: 999px; background: var(--chrome-bg); border: 1px solid var(--chrome-bg);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
 }
 .lab-nav > button {

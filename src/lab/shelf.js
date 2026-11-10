@@ -9,7 +9,7 @@ import { reducedMotion } from './kit.js';
 
 const BEAD = 38, RENDER = 160; // miniatures render at 160px and are scaled into the 38px bead
 // Stills are cached across visits. Bump when a control's look changes so the cache is retaken.
-const STILLS_VERSION = 'v14';
+const STILLS_VERSION = 'v15';
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 export function createShelf() {
@@ -131,13 +131,15 @@ export function createShelf() {
     if (Math.abs(th - shownTheme) > 0.002) {
       shownTheme = th;
       for (const b of beads) b.lightEl.style.opacity = th.toFixed(3);
+      stage?.theme(th);
     }
     requestAnimationFrame(followTheme);
   };
+  let stage = null;
   requestAnimationFrame(followTheme);
 
   document.body.appendChild(shelf);
-  const stage = createStage(beads);
+  stage = createStage(beads);
   return { shelf, stage };
 }
 
@@ -172,6 +174,19 @@ function createStage(beads) {
 
   let current = -1, inst = null, origin = null, token = 0, titleTimer = 0;
 
+  // the chrome (title, back, nav, hint) and the stage colour follow the theme continuously
+  const mixc = (a, b, t) => a.map((v, k) => v + (b[k] - v) * t);
+  const rgba = (c, a) => `rgba(${c.map(Math.round).join(',')},${a.toFixed(3)})`;
+  function theme(t) {
+    const ink = mixc([255, 255, 255], [20, 16, 12], t);
+    el.style.setProperty('--chrome', rgba(ink, 0.88 - 0.03 * t));
+    el.style.setProperty('--chrome-dim', rgba(ink, 0.45));
+    el.style.setProperty('--chrome-bg', rgba(ink, 0.08 - 0.02 * t));
+    el.style.setProperty('--bg', rgba(mixc([11, 11, 11], [222, 220, 217], t), 1));
+    el.style.color = rgba(ink, 0.9);
+  }
+  theme(window.glassTheme ?? (document.body.classList.contains('light') ? 1 : 0));
+
   function setOrigin(btn) {
     const r = btn.getBoundingClientRect();
     origin = [r.left + r.width / 2, r.top + r.height / 2];
@@ -183,13 +198,12 @@ function createStage(beads) {
     const my = ++token;
     const exp = beads[i].exp;
     current = i;
-    el.style.setProperty('--bg', exp.bg);
     el.style.setProperty('--accent', exp.accent);
-    el.classList.toggle('bright', isBright(exp.bg));
     title.querySelector('.n').textContent = `${String(i + 1).padStart(2, '0')} / ${String(beads.length).padStart(2, '0')}`;
     title.querySelector('h2').textContent = exp.name;
     history.replaceState(null, '', `#lab/${exp.id}`);
     title.querySelector('p').textContent = exp.how;
+    if (!reducedMotion()) title.animate([{ opacity: 0, transform: 'translateY(6px)' }, { opacity: 1, transform: 'none' }], { duration: 560, easing: 'cubic-bezier(.2,.7,.2,1)' });
     el.querySelector('.lab-hint').textContent = (matchMedia('(hover: none)').matches ? exp.hint.replace(/^Click/, 'Tap').replace('click', 'tap') : exp.hint);
     title.classList.remove('faded');
     clearTimeout(titleTimer);
@@ -199,6 +213,7 @@ function createStage(beads) {
     try {
       const mod = await exp.load();
       if (my !== token) return;
+      root.querySelector('.lab-error')?.remove();
       const host = document.createElement('div');
       host.className = 'lab-host';
       root.appendChild(host);
@@ -207,17 +222,21 @@ function createStage(beads) {
       requestAnimationFrame(() => host.classList.add('in'));
     } catch (err) {
       console.error(err);
-      root.innerHTML = `<p class="lab-error">This experiment couldn’t start here (it needs WebGL2 or a newer browser).</p>`;
+      root.insertAdjacentHTML('beforeend', `<p class="lab-error">This experiment couldn’t start here (it needs WebGL2 or a newer browser).</p>`);
     } finally {
       if (my === token) el.classList.remove('loading');
     }
   }
 
-  function unmount() {
+  function unmount(fade = false) {
     token++;
-    inst?.dispose();
+    const old = inst, hosts = [...root.children];
     inst = null;
-    root.replaceChildren();
+    if (fade && !reducedMotion()) {
+      // the outgoing control keeps running while it fades, so the switch is a dissolve, not a cut
+      hosts.forEach(h => { h.classList.remove('in'); h.classList.add('out'); });
+      setTimeout(() => { old?.dispose(); hosts.forEach(h => h.remove()); }, 420);
+    } else { old?.dispose(); hosts.forEach(h => h.remove()); }
   }
 
   function open(i, btn) {
@@ -233,7 +252,7 @@ function createStage(beads) {
   function go(i) {
     i = (i + beads.length) % beads.length;
     if (i === current) return;
-    unmount();
+    unmount(true);
     setOrigin(beads[i].b);
     mount(i);
   }
@@ -277,10 +296,5 @@ function createStage(beads) {
   };
   setTimeout(fromHash, 50);
 
-  return { open, close, go };
-}
-
-function isBright(hex) {
-  const [r, g, b] = [1, 3, 5].map(k => parseInt(hex.slice(k, k + 2), 16));
-  return (r * 0.299 + g * 0.587 + b * 0.114) > 150;
+  return { open, close, go, theme };
 }

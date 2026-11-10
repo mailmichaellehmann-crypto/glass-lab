@@ -1,0 +1,72 @@
+# Design-Vorgaben für das Glass Lab
+
+Diese Regeln gelten für jedes neue Element im Lab. Sie sind aus allen bisherigen Runden entstanden,
+inklusive dessen, was nicht funktioniert hat. Ein neues Element ist fertig, wenn es jeden Punkt erfüllt.
+
+## 1. Was ein Element ist
+- **Ein echtes Bedienelement** (Schalter, Slider, Auswahl, Eingabe, Bewertung …), keine Natur-Simulation,
+  keine Kunst-Szene, kein Dashboard. Es muss sofort klar sein, was man damit tut.
+- **Dieselbe DNA wie der Glass Toggle**: Es soll sich anfühlen wie ein Geschwister des Toggles.
+- **Intuitiv vor spektakulär.** Wenn man erst lesen muss, wie es geht, ist es falsch (daran ist Prism gescheitert).
+  Die Bedienung muss sich aus der Form ergeben; Hover und Cursor zeigen, was greifbar ist.
+- Es passt optisch zum Rest. Was aus der Reihe fällt, fliegt raus.
+
+## 2. Material & Licht
+- **Konsequente Draufsicht.** Alles wird von oben gesehen: Tropfen sind rund, Schatten fallen nach unten-rechts,
+  Höhe zeigt sich durch weiter versetzte, weichere Schatten. Nie Seitenansicht mischen.
+- **Echtes Glas** als SDF-Körper: Brechung **pro Farbkanal** (IOR ca. 1,44 / 1,50 / 1,57–1,60) für leichte
+  chromatische Aberration, Fresnel, Glanzpunkt, der dem Zeiger folgt, heller Rand, Glanzstreifen nach Interaktion.
+  Klar, nicht milchig (außer bewusst ganz leicht, wie beim Dial).
+- **Geformte Körper wirken plastisch**: Kuppeln, Facetten (Stars), dicke Kanten. Flache Flächen wirken billig.
+- **Licht als Material**: Leuchten mit dem `emitC`-Modell (additiv im Dunkeln, Tönung im Hellen), Licht fällt in die
+  Mulde und auf den Boden, sammelt sich in Glaskanten. Die Farbe trägt Bedeutung (kalt → warm, Bewertung → Hitze).
+- **Mulden** (`tray`) als Untergrund, in die Seite eingelassen, mit Innenschatten.
+- **Das Filament** des Toggles (umlaufender Lichtstreifen) wo es Sinn ergibt, um den Fortschritt/Wert zu zeigen.
+- Gemeinsames Finish (`finish()`): Lichter laufen weiß-heiß und weich aus statt hart zu clippen, dezente Vignette,
+  Lichtpool des Elements auf dem Boden, Korn. Nicht in einzelnen Elementen nachbauen.
+
+## 3. Pixel
+- Text und Werte stehen als **Pixelmatrix** (3×5-Schrift, `textCells`) **unter dem Glas** und werden durch es gebrochen.
+- Pixel **morphen über Federn**, sind **scheu** (weichen dem Zeiger aus) und **ziehen nach** bei Bewegung.
+- Wörter in Großbuchstaben, kurz (MEH, GOOD, WOW).
+
+## 4. Bewegung & Gefühl
+- **Alles federt** (`Spring`): Quetschen beim Drücken, Strecken beim Ziehen, Nachwackeln beim Loslassen.
+- **Kick-Licht** (`st.pulse`), **Funken** (`st.burst`), **Schockwelle** (`st.shock`) für bedeutende Momente,
+  sparsam dosiert. Höhepunkte (alles erledigt, 5 Sterne) bekommen eine kleine Kettenreaktion.
+- **Physik statt Animation**: Schwung, Gummiband an den Enden, Raster mit Einrasten.
+- Animationen laufen im Frame-Loop, keine `setTimeout`-Ketten (Effekte mit Zeitplan über eine Event-Queue im Loop).
+- `reducedMotion` respektieren (Flackern, Blitze, Wackeln reduzieren).
+
+## 5. Ton & Haptik
+- Jede Interaktion hat einen leisen, passenden Ton (`ping`, `tick`, `drip`, `land`, `air`, `key`), Raster klicken.
+- Vibration nur echt (`!thumb` und nach Nutzer-Geste); in Vorschauen ist alles stumm (`st.sfx`).
+
+## 6. Hell & Dunkel
+- Jedes Element sieht in **beiden Themes** richtig aus und folgt `window.glassTheme` **stufenlos**.
+- Auch die Lab-Chrome (Titel, Zurück, Navigation, Hinweis, Bühnenfarbe) folgt dem Theme.
+- Im Dunkeln dürfen leere Glaskörper nicht verschwinden (Rauchglas-Körper, Kantenlicht).
+
+## 7. Vorschau im Regal (Perle)
+- Zeigt das **echte Element** als **kompaktes Icon-Layout** (komplett, zentriert, keine abgeschnittenen Wörter),
+  z. B. 3 statt 5 Sterne, 2 statt 4 Tabs, kurze Mulde.
+- **Schwarz-weiß bis Hover**, Live-Miniatur mit **Autopilot** beim Hover, Standbild hell + dunkel aus demselben Frame.
+- Nach optischen Änderungen `STILLS_VERSION` in `shelf.js` hochzählen.
+
+## 8. Bedienung
+- Maus, Touch **und Tastatur** (Pfeile, Ziffern, Enter/Space wo sinnvoll). Tastatur hat Vorrang vor Hover-Vorschau.
+- Hinweiszeile (`hint`) kurz in Versalien, ausführliche Hilfe in `how`.
+- Keine globalen Key-Listener in Thumb-Mode.
+
+## 9. Qualität & Performance
+- Shader-Kompilierung abwarten (`await st.ready`), nichts Halbfertiges zeigen.
+- Zustand vor `glassStage`/`autosize` deklarieren (TDZ).
+- Ziel: < 1 ms CPU pro Frame im Mittel, keine Janks; Pixel-Upload nur bei Änderung.
+- `dispose()` räumt alles auf; nach vielen Öffnen/Schließen-Zyklen keine zusätzlichen Canvases/Kontexte.
+- Im Browser prüfen: alle Interaktionen, beide Themes, Perle, `?perf`, Konsole fehlerfrei.
+
+## 10. Ablauf für ein neues Element
+1. `src/lab/exp/<id>.js` mit `mount(root, { reducedMotion, thumb, demo })`.
+2. Eintrag in `registry.js` (id, thumb, hint, name, line, how, bg, accent, load), Platzhalter in `previews.js`.
+3. `STILLS_VERSION` hochzählen, README-Tabelle ergänzen.
+4. Prüfen (siehe 9), dann committen und pushen.

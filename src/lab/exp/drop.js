@@ -31,6 +31,9 @@ vec3 scene(vec2 q, vec2 sp, float frost) {
     col = shadowed(col, length(q - vec2(uWellX.x, wy + 12.0)) - ${WELL_R}.0, length(q - vec2(uWellX.x, wy + 1.5)) - ${WELL_R}.0, 0.0);
     if (sw < 2.0) {
       vec3 tc = tray(col, sw, length(q - vec2(uWellX.x, wy + 6.0)) - ${WELL_R}.0, q, vec2(uWellX.x, wy), vec2(${WELL_R}.0));
+      // the lower inner lip catches a thread of light: the empty well invites, brighter on hover
+      float lip = exp(-abs(sw + 1.6) / 1.4) * smoothstep(-${WELL_R}.0 * 0.2, ${WELL_R}.0, q.y - wy);
+      tc = emit(tc, lip * (0.15 + 0.3 * uDropL[i].y) * (uDrop[i].z > 0.5 ? 0.4 : 1.0));
       // ripple running over the floor after a drop lands
       if (uRipple[i] >= 0.0) {
         float rr = length(q - vec2(uWellX.x, wy));
@@ -209,7 +212,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
 
     st.drawPixels(ctx => {
       for (const r of rows) {
-        if (!thumb) r.lab.draw(ctx, r.checked ? 0.42 + 0.58 * (1 - r.strike) : 0.95);
+        if (!thumb) r.lab.draw(ctx, r.checked ? 0.4 + 0.5 * (1 - r.strike) : 0.84);
         r.chk.draw(ctx, 1);
       }
     });

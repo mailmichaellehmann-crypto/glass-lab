@@ -160,6 +160,14 @@ und verfehlte die Idee „ein gewöhnliches UI-Element wird außergewöhnlich“
   3×5-Pixelfont, Sound über das Audio-Kit des Toggles.
 - Die Elemente übernehmen das Theme der Toggle-Seite, also Hell oder Dunkel.
 
+### Gemeinsames Finish & Lab-Chrome
+- **Ton-Finish für alle Elemente** (`finish()` in `lib.glsl.js`): Überbelichtetes Licht läuft weiß-heiß aus statt
+  gesättigt zu clippen, darüber eine weiche Film-Schulter (nur im Dunkeln; das Helle bleibt Papier), eine leise
+  Vignette und Korn. Jedes Element wirft außerdem einen schwachen Pool seines Lichts auf den Boden.
+- **Die Lab-Chrome folgt dem Theme stufenlos** (Titel, Zurück-Knopf, Navigation, Hinweis, Bühnenfarbe), wie die Perlen.
+- **Wechsel zwischen Elementen blenden über:** Das alte Element läuft während des Ausblendens weiter, der Titel gleitet ein.
+- Alle Gestaltungsregeln für neue Elemente stehen in [DESIGN.md](DESIGN.md).
+
 ### Architektur & Performance
 - `shelf.js` montiert **genau ein** Element. Die Render-Schleife des Toggles pausiert, solange das Lab offen ist.
 - **Keine Ruckler beim Laden oder Öffnen:** Shader werden mit `KHR_parallel_shader_compile` abseits des

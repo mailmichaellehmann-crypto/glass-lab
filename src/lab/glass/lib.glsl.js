@@ -95,8 +95,10 @@ vec3 starfield(vec2 sp) {
 vec3 pageBg(vec2 sp) {
   vec2 uv = sp / (uRes / uDpr);
   float sky = smoothstep(1.5, 0.0, length((uv - vec2(0.9, -0.1)) * vec2(1.0, 1.25)));
-  vec3 dark = mix(vec3(0.036), vec3(0.11), sky) + uLight * 0.025 * sky + starfield(sp);
-  vec3 light = mix(vec3(0.80, 0.795, 0.79), vec3(0.935, 0.93, 0.92), sky);
+  // a faint pool of the control's own light on the floor around it: the object sits in its light
+  float pool = exp(-length((sp - uC) * vec2(1.0, 1.6)) / (230.0 * uScale));
+  vec3 dark = mix(vec3(0.036), vec3(0.11), sky) + uLight * (0.025 * sky + 0.045 * pool) + starfield(sp);
+  vec3 light = mix(vec3(0.80, 0.795, 0.79), vec3(0.935, 0.93, 0.92), sky) + (uLight - 0.5) * 0.025 * pool;
   return mix(dark, light, uTheme);
 }
 
@@ -192,7 +194,24 @@ vec3 glass(vec3 g, vec2 n, float depth, float bevel, vec2 p, vec2 c, vec2 hs, fl
   return kc;
 }
 
-// sparks + shockwave rim light, then grain
+// tone: white-hot highlights, soft roll-off, vignette, grain
+vec3 finish(vec3 col) {
+  // overexposed light turns white-hot instead of clipping to a flat saturated colour
+  float peak = max(col.r, max(col.g, col.b));
+  col += max(peak - 1.0, 0.0) * 0.3;
+  // soft shoulder above the knee: highlights roll off like film, everything below is untouched
+  const float K = 0.78;
+  vec3 over = max(col - K, 0.0);
+  vec3 rolled = min(col, K) + (1.0 - K) * (1.0 - exp(-over / (1.0 - K)));
+  col = mix(rolled, col, uTheme); // the light page is paper, not light: leave it bright
+  // a quiet vignette: the edges fall back so the eye lands on the control
+  vec2 v = (gl_FragCoord.xy / uRes - 0.5) * vec2(uRes.x / uRes.y, 1.0);
+  float vig = smoothstep(0.35, 1.1, length(v));
+  col *= 1.0 - vig * mix(0.32, 0.07, uTheme);
+  col += (hash12(gl_FragCoord.xy + fract(uTime) * 91.7) - 0.5) * 0.02;
+  return clamp(col, 0.0, 1.0);
+}
+// sparks + shockwave rim light, then the tone finish
 vec3 finishAt(vec3 col, vec2 p) {
   for (int i = 0; i < 28; i++) {
     if (i >= uSparkN) break;
@@ -200,12 +219,7 @@ vec3 finishAt(vec3 col, vec2 p) {
     col = emitC(col, uFxLight, s.z * (exp(-d / (s.w * 2.6)) * 0.55 + smoothstep(s.w, 0.0, d) * 1.4));
   }
   col = emitC(col, uFxLight, gRing * 0.3);
-  col += (hash12(gl_FragCoord.xy + fract(uTime) * 91.7) - 0.5) * 0.022;
-  return clamp(col, 0.0, 1.0);
-}
-vec3 finish(vec3 col) {
-  col += (hash12(gl_FragCoord.xy + fract(uTime) * 91.7) - 0.5) * 0.022;
-  return clamp(col, 0.0, 1.0);
+  return finish(col);
 }
 `;
 
