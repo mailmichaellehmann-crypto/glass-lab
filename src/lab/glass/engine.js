@@ -391,8 +391,11 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).t
   };
 
   st.run = step => {
+    let born = false;
     const L = loop((dt, t) => {
       const t0 = performance.now();
+      // power-on: a control arrives with a surge of its light and a glint wiping across the glass
+      if (!born && prog) { born = true; if (!thumb && !calm) { st.glint(); st.pulse(1); } }
       st.trackPointer(dt); stepFx(dt); st.kick *= Math.exp(-dt * 3.5); step(dt, t);
       if (PERF) { const ms = performance.now() - t0; PERF.n++; PERF.sum += ms; PERF.max = Math.max(PERF.max, ms); }
     });

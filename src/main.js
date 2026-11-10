@@ -293,9 +293,16 @@ function toggle() {
 }
 sw.setAttribute('aria-checked', String(st.target === 1));
 
+// the shockwave is one event for the whole page: the shader bends space, and the shelf's beads ride it
+function shockwave(x, y, strength) {
+  if (!P.shockwave || reduceMotion) return;
+  st.wave = { x, y, t: performance.now() / 1000 };
+  window.dispatchEvent(new CustomEvent('glass:wave', { detail: { x: cx + (x - cx) * S, y: cy + (y - cy) * S, speed: 620 * S, strength } }));
+}
+const GLASS_LIGHT = window.glassLight = { c: [0.5, 0.5, 0.5], led: 1, x: 0, y: 0 }; // the strip, in screen px: the shelf is lit by it
+
 function land(kx, ky, theta, strength) {
-  const now = performance.now() / 1000;
-  if (P.shockwave && !reduceMotion) st.wave = { x: kx, y: ky, t: now };
+  shockwave(kx, ky, strength);
   burst(stripCenter(kx, ky, theta), Math.round(8 + 16 * strength), 0.5 + strength);
   sfx.land(strength);
   st.kick = Math.max(st.kick, 0.8);
@@ -361,7 +368,7 @@ function stepBody(dt) {
         const s = clamp01(impact / 2600);
         sfx.land(s);
         burst([x, y], Math.round(4 + 14 * s), 0.4 + s, Math.atan2(-ny, -nx));
-        if (impact > 1300 && P.shockwave && !reduceMotion) st.wave = { x, y, t: performance.now() / 1000 };
+        if (impact > 1300) shockwave(x, y, s);
         if (impact > 650) loosen([nx * impact * 8, ny * impact * 8]);
       }
       st.squashV += (Math.abs(ny) > 0 ? 1 : -1) * impact / 2400;
@@ -610,6 +617,7 @@ function frame(nowMs) {
   const light = lerp3(hexToRgb(P.offColor), hexToRgb(P.onColor), theme);
   const waveAge = time - st.wave.t;
   const led = (1 + st.hover * 0.08 + Math.min(speed * 0.05, 0.18) + st.kick * 0.14) * P.intensity;
+  { const sc = stripCenter(kx, ky, theta); GLASS_LIGHT.c = light; GLASS_LIGHT.led = led; GLASS_LIGHT.x = cx + (sc[0] - cx) * S; GLASS_LIGHT.y = cy + (sc[1] - cy) * S; }
   const common = U => {
     gl.uniform2f(U.uC, cx, cy);
     gl.uniform2f(U.uTH, TRACK.w / 2, TRACK.h / 2);

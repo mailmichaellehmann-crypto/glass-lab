@@ -76,7 +76,16 @@ inklusive dessen, was nicht funktioniert hat. Ein neues Element ist fertig, wenn
 - Flache oder schmale Glaskörper bekommen keinen scharfen Glanzpunkt: er schrumpft zu einem Fleck, der wie ein verirrtes Pixel wirkt. Kapseln zeigen stattdessen einen langen Glanzstreifen, eckige Zellen nur weichen Schimmer.
 - Im engen Rand flacher Glaskörper bündelt die Brechung einen hellen Fleck daneben (Lichtschnur, Lichtkante) zu einem Punkt, der wie ein verirrtes Pixel wirkt: die Brechung zum äußersten Rand hin ausblenden (`thick *= smoothstep(0.0, 0.35, u)`).
 
-## 10. Ablauf für ein neues Element
+## 10. Ein Licht (Toggle, Regal und Lab gehören zusammen)
+- **Leitidee:** Es gibt ein Licht, das des Toggles. Alles andere wird davon beleuchtet, angestoßen oder geöffnet.
+- **Gleiches Finish überall:** Die Toggle-Seite nutzt dasselbe Finish wie das Lab (weiß-heiße Lichter, Film-Schulter im Dunkeln, Vignette, Lichtpool am Boden).
+- **Das Regal wird beleuchtet:** Jede Perle fängt das Licht der Lichtleiste auf der ihr zugewandten Seite, je näher, desto stärker (`window.glassLight`, gesetzt in `main.js`).
+- **Die Schockwelle ist ein Ereignis für die ganze Seite** (`glass:wave`): Der Shader biegt den Raum, die Perlen werden im selben Takt nach außen gedrückt und blitzen auf. Wellen nur über `shockwave()` in `main.js` auslösen.
+- **Öffnen und Schließen:** Die Flut hat eine Wellenfront (`.lab-wave`), die exakt auf der Kante des Kreises läuft (gleicher Ursprung, Radius, Dauer, Kurve wie der `clip-path`). Beim Schließen lebt das Element im schrumpfenden Kreis weiter, die Perle fängt das Licht und gibt den Stoß an die Nachbarn weiter.
+- **Ankommen:** Ein Element schaltet sich ein (Lichtstoß + Glanzstreifen, automatisch durch die Engine) und setzt sich federnd. Beim Blättern geht das alte zur einen Seite, das neue kommt von der anderen (`--dir`).
+- `prefers-reduced-motion`: keine Wellenfront, kein Perlen-Stoß, kein Einschweben.
+
+## 11. Ablauf für ein neues Element
 1. `src/lab/exp/<id>.js` mit `mount(root, { reducedMotion, thumb, demo })`.
 2. Eintrag in `registry.js` (id, thumb, hint, name, line, how, bg, accent, load), Platzhalter in `previews.js`.
 3. `STILLS_VERSION` hochzählen, README-Tabelle ergänzen.

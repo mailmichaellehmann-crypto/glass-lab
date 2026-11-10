@@ -24,6 +24,7 @@ export function createShelf() {
 
   EXPERIMENTS.forEach((exp, i) => {
     const li = document.createElement('li');
+    li.style.setProperty('--i', i);
     const b = document.createElement('button');
     b.className = 'bead';
     b.style.setProperty('--accent', exp.accent);
@@ -35,7 +36,7 @@ export function createShelf() {
     const cvDark = mk('still-dark'), cvLight = mk('still-light');
     li.appendChild(b);
     list.appendChild(li);
-    const bead = { exp, i, b, s: BEAD * dpr, dark: cvDark.getContext('2d'), light: cvLight.getContext('2d'), lightEl: cvLight };
+    const bead = { exp, i, b, li, cx: 0, cy: 0, s: BEAD * dpr, dark: cvDark.getContext('2d'), light: cvLight.getContext('2d'), lightEl: cvLight };
     beads.push(bead);
     const placeholder = PREVIEWS[exp.id] || PREVIEWS.blank; // until the real stills are ready
     placeholder(bead.dark, i * 1.7, bead.s);
@@ -139,6 +140,50 @@ export function createShelf() {
   let stage = null;
   requestAnimationFrame(followTheme);
 
+  // ---- one light: the toggle's strip lights the beads. Each bead catches it on the side facing the
+  // strip, stronger the nearer it is, in the strip's colour; it follows the light as the knob travels.
+  const measure = () => { for (const bd of beads) { const r = bd.b.getBoundingClientRect(); bd.cx = r.left + r.width / 2; bd.cy = r.top + r.height / 2; } litSig = ''; };
+  let litSig = '';
+  const followLight = () => {
+    const L = window.glassLight;
+    if (L && !document.body.classList.contains('lab-open')) {
+      const sig = `${L.x | 0}:${L.y | 0}:${(L.led * 40) | 0}:${L.c.map(v => (v * 64) | 0)}`;
+      if (sig !== litSig) {
+        litSig = sig;
+        const rgb = L.c.map(v => Math.round(Math.min(1, v) * 255)).join(',');
+        for (const bd of beads) {
+          const dx = L.x - bd.cx, dy = L.y - bd.cy, d = Math.hypot(dx, dy) || 1;
+          const lit = Math.min(1, L.led * Math.exp(-d / 210) * 1.5);
+          bd.b.style.setProperty('--lit-c', `rgba(${rgb},${(lit * 0.85).toFixed(3)})`);
+          bd.b.style.setProperty('--lit-g', `rgba(${rgb},${(lit * 0.5).toFixed(3)})`);
+          bd.b.style.setProperty('--lx', `${(50 + (dx / d) * 46).toFixed(1)}%`);
+          bd.b.style.setProperty('--ly', `${(50 + (dy / d) * 46).toFixed(1)}%`);
+        }
+      }
+    }
+    requestAnimationFrame(followLight);
+  };
+  requestAnimationFrame(followLight);
+
+  // ---- the shockwave reaches the shelf: every bead is pushed outward and flares as the front passes it,
+  // timed to the ring the shader draws (same origin, same speed)
+  const ripple = (x, y, speed, strength = 1) => {
+    if (calm) return;
+    for (const bd of beads) {
+      const dx = bd.cx - x, dy = bd.cy - y, d = Math.hypot(dx, dy) || 1;
+      const a = Math.min(1, strength) * Math.exp(-d / 520);
+      if (a < 0.04) continue;
+      const ux = (dx / d) * a, uy = (dy / d) * a;
+      bd.li.animate([
+        { transform: 'none', filter: 'brightness(1)' },
+        { transform: `translate(${ux * 7}px, ${uy * 7}px) scale(${1 + 0.12 * a})`, filter: `brightness(${1 + 1.1 * a})`, offset: 0.22 },
+        { transform: `translate(${-ux * 2.5}px, ${-uy * 2.5}px) scale(${1 - 0.03 * a})`, filter: 'brightness(1)', offset: 0.58 },
+        { transform: 'none', filter: 'brightness(1)' },
+      ], { duration: 640, delay: (d / speed) * 1000, easing: 'cubic-bezier(.3,.6,.3,1)' });
+    }
+  };
+  window.addEventListener('glass:wave', e => { measure(); ripple(e.detail.x, e.detail.y, e.detail.speed, 0.45 + e.detail.strength); });
+
   document.body.appendChild(shelf);
   // as many even rows as the width needs: one long row on a wide screen, two or three on narrow ones
   const fitRows = () => {
@@ -149,13 +194,14 @@ export function createShelf() {
     document.documentElement.style.setProperty('--rows', Math.ceil(n / cols));
   };
   fitRows();
-  addEventListener('resize', fitRows);
-  stage = createStage(beads);
+  addEventListener('resize', () => { fitRows(); requestAnimationFrame(measure); });
+  requestAnimationFrame(measure); setTimeout(measure, 1400); // again once the entrance has settled
+  stage = createStage(beads, { ripple, measure });
   return { shelf, stage };
 }
 
 // ------------------------------------------------------------------ the stage
-function createStage(beads) {
+function createStage(beads, { ripple, measure }) {
   const el = document.createElement('section');
   el.className = 'lab-stage';
   el.setAttribute('role', 'dialog');
@@ -172,6 +218,21 @@ function createStage(beads) {
     <div class="lab-hint" aria-hidden="true"></div>
     <div class="lab-loading"></div>`;
   document.body.appendChild(el);
+  // the flood has a wavefront: a white-hot line with the control's light trailing behind it, riding the
+  // edge of the opening circle (same origin, radius and timing as the clip-path)
+  const wave = document.createElement('div');
+  wave.className = 'lab-wave';
+  document.body.appendChild(wave);
+  const canWave = !!window.CSS?.registerProperty && !reducedMotion();
+  const flood = opening => {
+    if (!canWave) return;
+    const R = 1.5 * Math.max(innerWidth, innerHeight);
+    wave.style.setProperty('--ox', origin[0] + 'px'); wave.style.setProperty('--oy', origin[1] + 'px');
+    wave.style.setProperty('--accent', el.style.getPropertyValue('--accent'));
+    wave.getAnimations().forEach(a => a.cancel());
+    wave.animate([{ '--wave-r': opening ? '0px' : R + 'px', opacity: 1 }, { '--wave-r': opening ? R + 'px' : '0px', opacity: 1 }],
+      { duration: opening ? 900 : 800, easing: 'cubic-bezier(.7, 0, .2, 1)' });
+  };
   const root = el.querySelector('.lab-root');
   const title = el.querySelector('.lab-title');
   const dots = el.querySelector('.dots');
@@ -256,13 +317,17 @@ function createStage(beads) {
     window.dispatchEvent(new Event('lab:open'));
     document.body.classList.add('lab-open');
     el.classList.add('open');
+    root.style.setProperty('--dir', 0);
     mount(i);
+    flood(true);
     el.querySelector('.lab-back').focus({ preventScroll: true });
   }
 
   function go(i) {
+    const dir = Math.sign(i - current); // before wrapping: "next" from the last one still moves forward
     i = (i + beads.length) % beads.length;
     if (i === current) return;
+    root.style.setProperty('--dir', dir); // the old control leaves to one side, the new one arrives from the other
     unmount(true);
     setOrigin(beads[i].b);
     mount(i);
@@ -271,9 +336,18 @@ function createStage(beads) {
   function close() {
     if (current < 0) return;
     const was = current;
-    unmount();
+    root.style.setProperty('--dir', 0);
+    unmount(true); // the control keeps living inside the closing circle instead of vanishing first
     current = -1;
     setOrigin(beads[was].b);
+    flood(false);
+    // the light returns into its bead: it catches it, and the neighbours feel it
+    setTimeout(() => {
+      if (current >= 0 || reducedMotion()) return;
+      measure();
+      beads[was].li.animate([{ transform: 'scale(1)', filter: 'brightness(1)' }, { transform: 'scale(1.32)', filter: 'brightness(2)', offset: 0.3 }, { transform: 'scale(0.96)', filter: 'brightness(1)', offset: 0.65 }, { transform: 'scale(1)', filter: 'brightness(1)' }], { duration: 620, easing: 'cubic-bezier(.3,.6,.3,1)' });
+      ripple(beads[was].cx, beads[was].cy, 520, 0.55);
+    }, 640);
     el.classList.remove('open');
     document.body.classList.remove('lab-open');
     window.dispatchEvent(new Event('lab:close'));

@@ -134,6 +134,10 @@ vec3 pageColor(vec2 p, float sd) {
   vec3 dark = mix(vec3(0.036), vec3(0.11), sky) + uLight * 0.025 * sky;
   dark += starfield(sp) * uStars * (1.0 - smoothstep(0.2, 0.8, th));
   vec3 light = mix(vec3(0.80, 0.795, 0.79), vec3(0.935, 0.93, 0.92), sky);
+  // the toggle sits in a pool of its own light that reaches down to the shelf (as every lab control does)
+  float pool = exp(-length((sp - uC - vec2(0.0, uTH.y * uScale * 0.5)) * vec2(1.0, 1.45)) / (250.0 * uScale));
+  dark += uLight * 0.05 * pool * uLed;
+  light += (uLight - 0.5) * 0.03 * pool;
   vec3 col = mix(dark, light, th);
 
   float drop = 1.0 - smoothstep(-10.0, 34.0, sdRoundBox(p - uC - vec2(0.0, 14.0), uTH, uTR));
@@ -260,6 +264,13 @@ void main() {
   }
   col = emit(col, ring * 0.22 * uLed);
 
+  // the lab's finish: white-hot highlights, a film shoulder in the dark, a quiet vignette
+  float peak = max(col.r, max(col.g, col.b));
+  col += max(peak - 1.0, 0.0) * 0.3;
+  vec3 over = max(col - 0.78, 0.0);
+  col = mix(min(col, 0.78) + 0.22 * (1.0 - exp(-over / 0.22)), col, th);
+  vec2 vg = (gl_FragCoord.xy / uRes - 0.5) * vec2(uRes.x / uRes.y, 1.0);
+  col *= 1.0 - smoothstep(0.35, 1.1, length(vg)) * mix(0.32, 0.07, th);
   col += (hash12(gl_FragCoord.xy + fract(uTime) * 91.7) - 0.5) * 0.022;
   fragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }`;

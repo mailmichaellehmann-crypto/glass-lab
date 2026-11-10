@@ -194,6 +194,14 @@ und verfehlte die Idee „ein gewöhnliches UI-Element wird außergewöhnlich“
 - `?perf` in der URL: `window.labPerf` misst die CPU-Zeit pro Frame der Lab-Elemente.
 - `prefers-reduced-motion` dämpft Animationen und schaltet den Kreis-Reveal und die Live-Vorschauen ab.
 
+## Ein Licht
+
+Toggle, Regal und Lab hängen an einem Licht. Die Lichtleiste des Toggles beleuchtet die Perlen im Regal
+(jede fängt es auf der zugewandten Seite). Landet der Knopf, läuft die Schockwelle durch die Perlen: sie
+werden im Takt des Rings nach außen gedrückt und blitzen auf. Ein Klick auf eine Perle flutet den Bildschirm
+mit einer leuchtenden Wellenfront in der Farbe des Elements, das Element schaltet sich mit Lichtstoß und
+Glanzstreifen ein. Beim Zurückgehen zieht sich die Welle in die Perle zurück, die sie auffängt.
+
 ## Dateien
 - `src/shader.js` – der komplette Fragment-Shader
 - `src/main.js` – Physik, Pixel-Simulation, Funken, Input, GL-Setup

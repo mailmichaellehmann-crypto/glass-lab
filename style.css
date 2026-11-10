@@ -155,16 +155,21 @@ body.nogl .nogl-msg {
   filter: grayscale(1) contrast(1.22) brightness(1.06); /* black & white until you point at it: crisp, not murky */
   transition: filter 0.4s ease;
 }
-/* glass lens on top of the miniature */
+/* glass lens on top of the miniature; its rim catches the toggle's light on the side facing the strip */
 .bead::after {
   content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
   background:
+    radial-gradient(62% 62% at var(--lx, 50%) var(--ly, 0%), var(--lit-c, transparent), transparent 70%),
     radial-gradient(110% 70% at 30% 14%, rgba(255,255,255,0.3), rgba(255,255,255,0) 38%),
     radial-gradient(90% 90% at 50% 115%, rgba(255,255,255,0.12), rgba(255,255,255,0) 50%);
   box-shadow:
     inset 0 0 0 1px rgba(255,255,255,0.24),
+    0 0 14px -3px var(--lit-g, transparent),
     0 8px 18px -6px rgba(0,0,0,0.55);
 }
+/* the beads arrive one after another, like drops settling on the shelf */
+.shelf li { animation: bead-in 0.75s cubic-bezier(.2, .9, .25, 1.25) both; animation-delay: calc(var(--i, 0) * 38ms + 260ms); }
+@keyframes bead-in { from { opacity: 0; transform: translateY(16px) scale(0.55); } }
 /* the live control, rendered at 160px and scaled into the bead */
 .bead canvas.still-light { opacity: 0; } /* faded in live with the toggle's theme */
 .bead-live {
@@ -184,7 +189,7 @@ body.nogl .nogl-msg {
 .bead:hover canvas, .bead:focus-visible canvas, .bead.live canvas { filter: none; }
 .bead:hover::before, .bead:focus-visible::before { opacity: 0.55; transform: scale(1.25); }
 .bead:active { transform: translateY(-2px) scale(1.04); }
-body.light .bead::after { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.65), 0 8px 18px -8px rgba(0,0,0,0.35); }
+body.light .bead::after { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.65), 0 0 14px -3px var(--lit-g, transparent), 0 8px 18px -8px rgba(0,0,0,0.35); }
 
 .shelf-caption {
   order: 2; height: 16px; display: flex; gap: 8px; align-items: baseline;
@@ -213,9 +218,29 @@ body.light .bead::after { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.65), 0 
   transition: clip-path 0.9s cubic-bezier(.7, 0, .2, 1), visibility 0s, background-color 0.6s ease;
 }
 .lab-root, .lab-host { position: absolute; inset: 0; }
-.lab-host { opacity: 0; transition: opacity 0.7s ease 0.15s; }
-.lab-host.in { opacity: 1; }
-.lab-host.out { opacity: 0; transition: opacity 0.4s ease; pointer-events: none; }
+.lab-host {
+  opacity: 0; transform: translateX(calc(var(--dir, 0) * 64px)) scale(0.955);
+  transition: opacity 0.6s ease 0.12s, transform 0.95s cubic-bezier(.2, .9, .25, 1.1) 0.12s;
+}
+.lab-host.in { opacity: 1; transform: none; }
+.lab-host.out {
+  opacity: 0; transform: translateX(calc(var(--dir, 0) * -64px)) scale(0.975); pointer-events: none;
+  transition: opacity 0.34s ease, transform 0.42s cubic-bezier(.5, 0, .8, .4);
+}
+
+/* the wavefront of the flood */
+@property --wave-r { syntax: '<length>'; inherits: false; initial-value: 0px; }
+.lab-wave {
+  position: fixed; inset: 0; z-index: 51; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle at var(--ox, 50%) var(--oy, 50%),
+    transparent calc(var(--wave-r) - 240px),
+    color-mix(in srgb, var(--accent) 16%, transparent) calc(var(--wave-r) - 90px),
+    color-mix(in srgb, var(--accent) 62%, transparent) calc(var(--wave-r) - 9px),
+    rgba(255, 255, 255, 0.96) calc(var(--wave-r) - 2.5px),
+    rgba(255, 255, 255, 0.96) calc(var(--wave-r) - 0.5px),
+    color-mix(in srgb, var(--accent) 55%, transparent) calc(var(--wave-r) + 3px),
+    transparent calc(var(--wave-r) + 34px));
+}
 .lab-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
 .lab-back {
@@ -253,7 +278,7 @@ body.light .bead::after { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.65), 0 
   width: 7px; height: 7px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
   background: var(--chrome-dim); opacity: 0.5; transition: all 0.3s ease;
 }
-.lab-nav .dots button.on { background: var(--accent); opacity: 1; width: 22px; border-radius: 4px; }
+.lab-nav .dots button.on { background: var(--accent); opacity: 1; width: 22px; border-radius: 4px; box-shadow: 0 0 10px color-mix(in srgb, var(--accent) 70%, transparent); }
 
 .lab-hint {
   position: absolute; left: 0; right: 0; bottom: calc(92px + env(safe-area-inset-bottom)); z-index: 2;
@@ -282,4 +307,6 @@ body.lab-open .brand, body.lab-open .keys, body.lab-open #hint, body.lab-open .p
 @media (prefers-reduced-motion: reduce) {
   .lab-stage, .lab-stage.open { transition: visibility 0s, opacity 0.3s; clip-path: none; }
   .bead { transition: none; }
+  .shelf li { animation: none; }
+  .lab-host, .lab-host.out { transform: none; }
 }
