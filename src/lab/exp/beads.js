@@ -12,7 +12,8 @@ import { clamp } from '../kit.js';
 
 const NB = 14, MAXC = 10;                     // beads drawn at once (only the visible ones are sent)
 const OPEN = hexRgb('#ff9ad5'), DONE = hexRgb('#3dffa8');
-const PITCH = 3.2;
+const PITCH = 3.4;
+const DOT = PITCH * 0.84;                    // a small gap between pixels, like an LED display (as in PIN): crisp, not blurred
 const textW = s => (s.length ? s.length * 4 - 1 : 0) * PITCH;
 
 const FRAG = /* glsl */ `
@@ -145,8 +146,7 @@ vec3 beadGlass(vec2 p, vec2 sp, float sk, int i) {
   vec2 n = beadNormal(p, i);
   float depth = max(-sk, 0.0);
   float bevel = pow(1.0 - clamp(depth / 13.0, 0.0, 1.0), 2.4);
-  vec2 rel = p - b.xy;
-  vec2 bend = -n * bevel * 11.0 - rel * 0.03;    // only the rim bends; the face stays flat and crisp
+  vec2 bend = -n * bevel * 11.0;                  // only the rim bends; the flat face shows the word 1:1, never resampled
   float frost = 0.02 + 0.95 * bevel;               // the rim scatters what it bends: no dotted ghosts of the word
   float cover;
   vec3 g = railAt(p + bend, sp + bend * uScale, frost, n * bevel * 2.4, cover);
@@ -202,13 +202,13 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
 
   // ---------------------------------------------------------------- beads (positions along the row, from its start)
   const makeBead = (word, done = false) => {
-    const m = new PixelMatrix({ size: PITCH, swirl: 7, shyR: 12, shyF: 4 });
+    const m = new PixelMatrix({ size: DOT, swirl: 7, shyR: 12, shyF: 4 });
     m.set(textCells(word, PITCH), { instant: true });
     const hw = halfFor(word);
     return { word, done, x: 0, vx: 0, y: 0, vy: 0, slot: 0, hw, hwC: hw, grow: 1, state: 'on', lift: 0, jelly: new Spring(380, 10), m, fill: done ? 1 : 0, strike: done ? 1 : 0, flash: 0, sx: 0 };
   };
   const tasks = (thumb ? [['UI', false], ['FX', true]] : [['CALL MOM', false], ['MILK', true], ['GYM', false]]).map(([w, d]) => makeBead(w, d));
-  const input = { text: '', x: 0, slot: 0, hw: halfFor(''), hwC: 0, grow: 0, jelly: new Spring(380, 10), m: new PixelMatrix({ size: PITCH, swirl: 6, shyR: 10, shyF: 3 }), shake: 0, sx: 0 };
+  const input = { text: '', x: 0, slot: 0, hw: halfFor(''), hwC: 0, grow: 0, jelly: new Spring(380, 10), m: new PixelMatrix({ size: DOT, swirl: 6, shyR: 10, shyF: 3 }), shake: 0, sx: 0 };
   let rowW = 0;
   const layout = () => {
     let x = PAD;
@@ -376,7 +376,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
 
   // ---------------------------------------------------------------- autopilot (shelf miniature): ticks the tasks off, then starts over
   let demoT = 0, filOn = 0, head = 0, shownCaption = null, lastEdge = 0;
-  const caption = new PixelMatrix({ size: 2.8, swirl: 8, shyR: 12, shyF: 4 });
+  const caption = new PixelMatrix({ size: 2.4, swirl: 8, shyR: 12, shyF: 4 });
   caption.oy = RH + 34;
   const bU = new Float32Array(NB * 4), fU = new Float32Array(NB * 4), tU = new Float32Array(NB);
   // a bead's pixels fade where it slides under the rail's lip
