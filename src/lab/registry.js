@@ -62,8 +62,8 @@ export const EXPERIMENTS = [
     bg: '#0b0b0b', accent: '#c8a2ff', load: () => import('./exp/bloom.js'),
   },
   {
-    id: 'beads', thumb: { span: 275, fx: 0, fy: 0, still: { demo: true, wait: 1500 } }, hint: 'Type a word · press Enter', name: 'Beads', line: 'tags as glass beads on a string of light',
-    how: 'Type a word and press Enter · drag a bead to reorder · pull it off the string to remove · ⌫ in an empty field pops the last',
+    id: 'beads', thumb: { span: 210, fx: 0, fy: 0, still: { demo: true, wait: 1450 } }, hint: 'Tap a task · type a new one', name: 'Beads', line: 'a task list of glass beads on a thread of light',
+    how: 'Type a task and press Enter · tap a task to get it done · drag a bead to reorder, pull it off the thread to delete',
     bg: '#0b0b0b', accent: '#ff9ad5', load: () => import('./exp/beads.js'),
   },
   {
