@@ -92,7 +92,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const st = glassStage(root, { frag: FRAG, box: [TRACK[0] * 2 + 120, TRACK[1] * 2 + 150], thumb });
   await st.ready;
   const S = st.sfx;
-  const buzz = pat => { if (!thumb && navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); };
+  const buzz = pat => st.buzz(pat);
 
   // ---------------------------------------------------------------- state
   let phase = 'idle';             // idle · drag · auto · done · return

@@ -135,7 +135,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const st = glassStage(root, { frag: FRAG, box: [ROUT * 2 + BR * 2 + 80, ROUT * 2 + BR * 2 + (thumb ? 60 : 130)], thumb });
   await st.ready;
   const S = st.sfx;
-  const buzz = pat => { if (!thumb && navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); };
+  const buzz = pat => st.buzz(pat);
 
   // ---------------------------------------------------------------- state
   const ang = i => -Math.PI / 2 + (i * Math.PI * 2) / N;

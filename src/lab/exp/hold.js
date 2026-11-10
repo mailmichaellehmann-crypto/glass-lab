@@ -160,7 +160,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     if (!holding) return;
     holding = false;
     jelly.kick(-2.6); bounce.kick(-90); // springs back up like jelly
-    if (state === 'idle' && prog > 0.04) { shake = 1; st.sfx.tick(0.05, 0.8); navigator.vibrate?.([12, 40, 12]); }
+    if (state === 'idle' && prog > 0.04) { shake = 1; st.sfx.tick(0.05, 0.8); st.buzz([12, 40, 12]); }
   };
   st.bindPointer({
     down: (p, e, d) => { if (over(d)) begin(); },
@@ -185,7 +185,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     jelly.kick(-6); bounce.kick(-160); // it pops up and wobbles
     label.set(bitmapCells(CHECK, PITCH * 0.9));
     st.sfx.ping(true); st.sfx.land(0.7);
-    navigator.vibrate?.([20, 30, 60]);
+    st.buzz([20, 30, 60]);
   }
 
   let demoT = 0;
@@ -207,7 +207,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     // heartbeat: faster as the loop closes
     if (holding) {
       beatT += dt * (1.6 + prog * 5);
-      if (beatT >= 1) { beatT -= 1; pulse = 1; st.pulse(0.3 + prog * 0.4); jelly.kick(1.2 + prog * 1.6); st.sfx.tick(0.2 + prog * 0.8, 0.5 + prog * 0.6); navigator.vibrate?.(6); }
+      if (beatT >= 1) { beatT -= 1; pulse = 1; st.pulse(0.3 + prog * 0.4); jelly.kick(1.2 + prog * 1.6); st.sfx.tick(0.2 + prog * 0.8, 0.5 + prog * 0.6); st.buzz(6); }
     }
     pulse *= Math.exp(-dt * 9);
     press += ((holding ? 1 : 0) - press) * Math.min(1, dt * 14);

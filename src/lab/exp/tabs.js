@@ -107,7 +107,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     const old = sel;
     if (i === sel) return;
     sel = i; layout(); armed = true; jelly.kick(-1.5); // it gathers itself before leaping
-    st.sfx.ping(i > old); navigator.vibrate?.(8); st.pulse(0.7);
+    st.sfx.ping(i > old); st.buzz(8); st.pulse(0.7);
   };
   const local = d => d[0] - st.cx;
   const overRail = ([x, y]) => Math.abs(x - st.cx) < RAIL[0] && Math.abs(y - st.cy) < RAIL[1];
@@ -171,7 +171,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       if (s > 0.5) st.shock(head, 0);
       st.glint(); st.pulse(1);
       st.sfx.land(0.2 + 0.4 * s);
-      navigator.vibrate?.(8);
+      st.buzz(8);
     }
     prevHead = head;
     const jx = jelly.step(dt) * 0.03;

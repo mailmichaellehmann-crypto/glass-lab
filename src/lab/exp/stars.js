@@ -217,7 +217,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const st = glassStage(root, { frag: FRAG, box: [TRAY[0] * 2 + 120, 250], thumb });
   await st.ready;
   const S = st.sfx;
-  const buzz = pat => { if (!thumb && navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); };
+  const buzz = pat => st.buzz(pat);
 
   // ---------------------------------------------------------------- state
   let value = 0, hover = null;

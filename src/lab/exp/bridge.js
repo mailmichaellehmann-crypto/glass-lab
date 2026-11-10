@@ -156,7 +156,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   await st.ready; // the shader compiles off the main thread; show nothing half-made
   const S = st.sfx;
   // haptics only for a real control the user has touched (never in the shelf miniature)
-  const buzz = pat => { if (!thumb && navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); };
+  const buzz = pat => st.buzz(pat);
 
   // ---------------------------------------------------------------- state
   const V0 = thumb ? [10, 90] : [25, 70];

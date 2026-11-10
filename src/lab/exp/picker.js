@@ -121,7 +121,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const st = glassStage(root, { frag: FRAG, box: [TRAY[0] * 2 + 120, TRAY[1] * 2 + (thumb ? 70 : 120)], thumb });
   await st.ready;
   const S = st.sfx;
-  const buzz = pat => { if (!thumb && navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); };
+  const buzz = pat => st.buzz(pat);
 
   // ---------------------------------------------------------------- state
   const wheels = [

@@ -193,7 +193,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const st = glassStage(root, { frag: FRAG, box: [RMAX * 2 + 80, RH * 2 + (thumb ? 60 : 150)], thumb });
   await st.ready;
   const S = st.sfx;
-  const buzz = pat => { if (!thumb && navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); };
+  const buzz = pat => st.buzz(pat);
 
   let clock = 0;
   const events = [];

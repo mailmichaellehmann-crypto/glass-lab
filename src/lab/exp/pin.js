@@ -183,7 +183,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const st = glassStage(root, { frag: FRAG, box: thumb ? [TRAY[0] * 2 + 60, TRAY[1] * 2 + 70] : [360, 470], thumb });
   await st.ready;
   const S = st.sfx;
-  const buzz = pat => { if (!thumb && navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); };
+  const buzz = pat => st.buzz(pat);
 
   // ---------------------------------------------------------------- state
   let entered = '', busy = false, err = 0, merge = 0, mergeT = 0, caretX = cellX(0), head1 = 0, headS = 0, on1 = 1;

@@ -276,7 +276,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     if (stepNow !== stepShown) {
       const atEnd = stepNow === 0 || stepNow === N - 1;
       st.sfx.tick(stepNow / (N - 1), atEnd ? 1.4 : 0.8);
-      navigator.vibrate?.(atEnd ? 14 : 4);
+      st.buzz(atEnd ? 14 : 4);
       pulse.kick(stepNow > stepShown ? 26 : -26);
       st.pulse(atEnd ? 1 : 0.3);
       if (atEnd) {

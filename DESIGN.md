@@ -43,7 +43,7 @@ inklusive dessen, was nicht funktioniert hat. Ein neues Element ist fertig, wenn
 
 ## 5. Ton & Haptik
 - Jede Interaktion hat einen leisen, passenden Ton (`ping`, `tick`, `drip`, `land`, `air`, `key`), Raster klicken.
-- Vibration nur echt (`!thumb` und nach Nutzer-Geste); in Vorschauen ist alles stumm (`st.sfx`).
+- Vibration nur über `st.buzz()` (nie in Miniaturen, nie vor der ersten Berührung); Ton über `st.sfx` (in Vorschauen stumm). Nie `navigator.vibrate` direkt aufrufen.
 
 ## 6. Hell & Dunkel
 - Jedes Element sieht in **beiden Themes** richtig aus und folgt `window.glassTheme` **stufenlos**.

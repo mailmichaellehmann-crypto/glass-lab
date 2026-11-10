@@ -210,6 +210,8 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).t
   // pointer relative to a pixel matrix's origin (design px)
   st.local = m => [st.dp[0] - st.cx - (m?.ox || 0), st.dp[1] - st.cy - (m?.oy || 0)];
   st.pulse = (v = 1) => { st.kick = Math.max(st.kick, v); };
+  // haptics: never in a shelf miniature, never before the user has touched the page
+  st.buzz = pat => { if (!thumb && navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); };
   const sparkBuf = new Float32Array(28 * 4);
   const calm = reducedMotion();
   const now = () => performance.now() / 1000;

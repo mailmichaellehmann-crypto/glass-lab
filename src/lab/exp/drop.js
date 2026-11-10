@@ -130,7 +130,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     r.ripple = 0;
     st.burst(WELL_X - 14, rowY(r.i) - 6, 4, 0.35, -Math.PI * 0.75, 0.5);
     st.burst(WELL_X + 14, rowY(r.i) - 6, 4, 0.35, -Math.PI * 0.25, 0.5);
-    S.drip(0.35 + r.i * 0.1, 1); navigator.vibrate?.(9);
+    S.drip(0.35 + r.i * 0.1, 1); st.buzz(9);
     st.pulse(0.6);
     setTimeout(() => { if (r.checked) r.chk.set(bitmapCells(CHECK, 3.6)); }, 90);
     if (rows.every(x => x.checked) && !celebrated) celebrate();

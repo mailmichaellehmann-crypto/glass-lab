@@ -114,7 +114,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const st = glassStage(root, { frag: FRAG, box: [TRAY[0] * 2 + 90, TRAY[1] * 2 + (thumb ? 150 : 210)], thumb });
   await st.ready;
   const S = st.sfx;
-  const buzz = pat => { if (!thumb && navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); };
+  const buzz = pat => st.buzz(pat);
 
   // ---------------------------------------------------------------- state
   const label = new PixelMatrix({ size: PITCH, swirl: 6, shyR: 14, shyF: 5 });

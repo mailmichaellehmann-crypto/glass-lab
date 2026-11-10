@@ -138,7 +138,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     chars.push({ ch, m });
     jelly.kick(-2.2 - Math.random());
     idleT = 0;
-    if (!quiet) { S.key((ch.charCodeAt(0) % 26) / 26); navigator.vibrate?.(3); }
+    if (!quiet) { S.key((ch.charCodeAt(0) % 26) / 26); st.buzz(3); }
     refreshSuggestion();
     return true;
   }
@@ -159,10 +159,10 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     chars.length = 0;
     st.burst(lx, 0, 14, 0.9);
     jelly.kick(5); st.pulse(0.8);
-    if (!silent) { S.land(0.35); navigator.vibrate?.(10); }
+    if (!silent) { S.land(0.35); st.buzz(10); }
     refreshSuggestion();
   }
-  function refuse(amount = 1) { shake = Math.max(shake, amount); S.tick(0.03, 0.9); navigator.vibrate?.([10, 40, 10]); }
+  function refuse(amount = 1) { shake = Math.max(shake, amount); S.tick(0.03, 0.9); st.buzz([10, 40, 10]); }
   // letters that arrive in a burst (paste, accepted suggestion) are queued and spun in one by one
   let queue = [], queueT = 0;
   const pendingText = () => text() + queue.map(q => q.ch).join('');

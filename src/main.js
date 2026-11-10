@@ -12,6 +12,7 @@ import { Motion } from './sensors.js';
 import { sunElevation, guessLocation } from './sun.js';
 import { DEFAULTS, SCHEMA, loadParams, saveParams } from './params.js';
 import { createPanel } from './panel.js';
+const buzz = pat => { if (navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); }; // only after a real touch
 
 const canvas = document.getElementById('gl');
 const hint = document.getElementById('hint');
@@ -238,7 +239,7 @@ function loosen(kick) {
     px.vx += rand(-1, 1) * 120 - kick[0] * 0.25;
     px.vy += rand(-1, 1) * 120 - kick[1] * 0.25;
   }
-  if (n) { st.calmT = 0; navigator.vibrate?.([10, 30, 10]); }
+  if (n) { st.calmT = 0; buzz([10, 30, 10]); }
 }
 
 // ------------------------------------------------------------------ sparks
@@ -281,7 +282,7 @@ function setTarget(t, quiet = false) {
   st.target = t;
   st.armed = true;
   st.sweepT = performance.now() / 1000;
-  if (!quiet) { sfx.ping(t === 1); navigator.vibrate?.(8); }
+  if (!quiet) { sfx.ping(t === 1); buzz(8); }
   sw.setAttribute('aria-checked', String(t === 1));
   try { localStorage.setItem('glass-toggle:on', t ? '1' : '0'); } catch { /* ignore */ }
 }
@@ -310,7 +311,7 @@ function detach(kx) {
   setTarget(st.p, true);
   sfx.land(0.45);
   burst([kx, cy - KNOB_HALF], 10, 0.7, -Math.PI / 2);
-  navigator.vibrate?.(15);
+  buzz(15);
 }
 
 function goHome() {

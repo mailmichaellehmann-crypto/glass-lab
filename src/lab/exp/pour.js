@@ -180,7 +180,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       if (s > 0.35) st.shock(side * (TUBE[0] - 30), 0);
       st.glint();
       st.sfx.land(0.3 + 0.5 * s); st.pulse(1);
-      navigator.vibrate?.(12);
+      st.buzz(12);
     }
     wasEdge = atEdge;
 
