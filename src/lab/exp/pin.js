@@ -21,7 +21,7 @@ uniform vec2  uTrayC, uTray;   // tray centre (abs) and half size
 uniform vec4  uKey[11];        // x, y (abs), radius, press
 uniform int   uKeyN;
 uniform vec3  uL;
-uniform float uErr, uMerge, uEnergy, uTh, uCaretOn;
+uniform float uErr, uMerge, uEnergy, uTh, uCaretOn, uCaretW;
 uniform vec2  uCaretC, uCaretH;
 
 float sdCells(vec2 p) {
@@ -41,7 +41,7 @@ float sdKeys(vec2 p, out int idx) {
   }
   return d;
 }
-float caret(vec2 p) { return filament(p, uCaretC, sdRoundBox(p - uCaretC, uCaretH, 11.0), uTh, 0.55); }
+float caret(vec2 p) { return filament(p, uCaretC, sdRoundBox(p - uCaretC, uCaretH, 11.0), uTh, uCaretW); }
 
 vec3 scene(vec2 q, vec2 sp, float frost) {
   vec3 col = pageBg(sp);
@@ -243,9 +243,10 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
 
     // the caret: the toggle's filament circles the cell that comes next
     const n = entered.length;
-    const caretOn = !busy && n < 4 && merge < 0.05 ? 1 : 0;
-    caretX += (cellX(Math.min(n, 3)) - caretX) * Math.min(1, dt * 12);
-    th += dt * (reducedMotion ? 0.8 : 2.4);
+    // after the right code it grows from one cell to the whole strip and circles all of it
+    const caretOn = Math.max(!busy && n < 4 && merge < 0.05 ? 1 : 0, merge);
+    caretX += ((merge > 0.02 ? 0 : cellX(Math.min(n, 3))) - caretX) * Math.min(1, dt * 12);
+    th += dt * (reducedMotion ? 0.8 : 2.4 + merge * 1.2);
 
     const cellU = [];
     cells.forEach((c, i) => {
@@ -285,7 +286,9 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       gl.uniform1f(U.uTh, th);
       gl.uniform1f(U.uCaretOn, caretOn);
       gl.uniform2f(U.uCaretC, st.cx + caretX, st.cy + CY);
-      gl.uniform2f(U.uCaretH, CELL[0], CELL[1]);
+      const stripW = 1.5 * GAP + GAP / 2 + 1.5;
+      gl.uniform2f(U.uCaretH, CELL[0] + (stripW - CELL[0]) * merge, CELL[1] * (1 - merge * 0.06));
+      gl.uniform1f(U.uCaretW, 0.55 + merge * 0.35);
     });
   });
 

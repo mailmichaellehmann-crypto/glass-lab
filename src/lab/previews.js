@@ -30,13 +30,7 @@ export const PREVIEWS = {
     }
     glow(c, s * 0.77, s / 2, s * 0.15, 'rgba(155,140,255,A)', 0.4);
   },
-  pool(c, t, s) {
-    base(c, s);
-    glow(c, s / 2, s / 2, s * 0.42, 'rgba(90,209,255,A)', 0.35);
-    c.fillStyle = 'rgba(6,6,8,0.9)'; c.beginPath(); c.arc(s / 2, s / 2, s * 0.32, 0, TAU); c.fill();
-    c.strokeStyle = 'rgba(90,209,255,0.7)'; c.lineWidth = s * 0.015; c.beginPath(); c.arc(s / 2, s / 2, s * 0.2, 0, TAU); c.stroke();
-    c.strokeStyle = 'rgba(255,255,255,0.5)'; c.beginPath(); c.roundRect(s * 0.56, s * 0.2, s * 0.14, s * 0.18, s * 0.03); c.stroke();
-  },
+
   picker(c, t, s) {
     base(c, s);
     c.fillStyle = '#060607'; c.beginPath(); c.roundRect(s * 0.18, s * 0.22, s * 0.64, s * 0.56, s * 0.1); c.fill();
