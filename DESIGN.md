@@ -18,6 +18,7 @@ inklusive dessen, was nicht funktioniert hat. Ein neues Element ist fertig, wenn
   chromatische Aberration, Fresnel, Glanzpunkt, der dem Zeiger folgt, heller Rand, Glanzstreifen nach Interaktion.
   Klar, nicht milchig (außer bewusst ganz leicht, wie beim Dial).
 - **Geformte Körper wirken plastisch**: Kuppeln, Facetten (Stars), dicke Kanten. Flache Flächen wirken billig.
+- **Glas über Text**: eine Platte mit flacher Oberseite und abgeschrägter Kante (`glass()` aus der Bibliothek, wie Toggle und Tabs). Nur die Kante bricht, der Text darunter bleibt scharf. Kuppeln, die Text verzerren, wirken unscharf.
 - **Licht als Material**: Leuchten mit dem `emitC`-Modell (additiv im Dunkeln, Tönung im Hellen), Licht fällt in die
   Mulde und auf den Boden, sammelt sich in Glaskanten. Die Farbe trägt Bedeutung (kalt → warm, Bewertung → Hitze).
 - **Mulden** (`tray`) als Untergrund, in die Seite eingelassen, mit Innenschatten.
@@ -37,6 +38,8 @@ inklusive dessen, was nicht funktioniert hat. Ein neues Element ist fertig, wenn
 - **Physik statt Animation**: Schwung, Gummiband an den Enden, Raster mit Einrasten.
 - Animationen laufen im Frame-Loop, keine `setTimeout`-Ketten (Effekte mit Zeitplan über eine Event-Queue im Loop).
 - `reducedMotion` respektieren (Flackern, Blitze, Wackeln reduzieren).
+- **Nichts durchdringt sich**: Objekte in einer Bahn überholen einander nicht; eine Lücke schließt sich erst, wenn das Entfernte verschwunden ist; ein gezogenes Objekt wird angehoben und obenauf gezeichnet.
+- **Eingabe im Element selbst** (z. B. in die leere Perle tippen), statt Dinge von einem separaten Feld herüberfliegen zu lassen.
 
 ## 5. Ton & Haptik
 - Jede Interaktion hat einen leisen, passenden Ton (`ping`, `tick`, `drip`, `land`, `air`, `key`), Raster klicken.

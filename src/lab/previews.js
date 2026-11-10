@@ -32,12 +32,13 @@ export const PREVIEWS = {
   },
   beads(c, t, s) {
     base(c, s);
-    c.strokeStyle = 'rgba(255,154,213,0.7)'; c.lineWidth = s * 0.012; c.beginPath(); c.moveTo(s * 0.08, s / 2); c.lineTo(s * 0.92, s / 2); c.stroke();
-    [[0.28, 0], [0.5, 0], [0.74, 1]].forEach(([x, d]) => {
-      pill(c, s * x, s / 2, s * 0.18, s * 0.12);
-      c.fillStyle = d ? 'rgba(61,255,168,0.35)' : 'rgba(255,255,255,0.12)'; c.fill(); c.strokeStyle = 'rgba(255,255,255,0.5)'; c.stroke();
+    pill(c, s / 2, s / 2, s * 0.86, s * 0.24); c.fillStyle = '#060607'; c.fill();
+    [[0.3, 1], [0.55, 0], [0.76, 2]].forEach(([x, k]) => {
+      pill(c, s * x, s / 2, k === 2 ? s * 0.12 : s * 0.2, s * 0.16);
+      c.fillStyle = k === 1 ? 'rgba(61,255,168,0.35)' : 'rgba(255,255,255,0.1)'; c.fill(); c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = s * 0.012; c.stroke();
     });
   },
+
 
 
   copy(c, t, s) {
