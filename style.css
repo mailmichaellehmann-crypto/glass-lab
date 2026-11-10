@@ -119,7 +119,7 @@ body.sun #hint .verb { display: none; }
   font-size: 15px; display: none;
   background: var(--panel-bg); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
 }
-.panel-fab.show { display: block; }
+.panel-fab.show { display: grid; place-items: center; padding: 0; line-height: 0; }
 
 /* embed mode: just the toggle */
 body.embed .brand, body.embed .keys, body.embed .panel, body.embed .panel-fab { display: none !important; }
@@ -152,18 +152,17 @@ body.nogl .nogl-msg {
 .bead canvas {
   width: 100%; height: 100%; border-radius: 50%; display: block;
   position: absolute; inset: 0;
-  filter: grayscale(1) contrast(1.08) brightness(0.92); /* black & white until you point at it */
+  filter: grayscale(1) contrast(1.22) brightness(1.06); /* black & white until you point at it: crisp, not murky */
   transition: filter 0.4s ease;
 }
 /* glass lens on top of the miniature */
 .bead::after {
   content: ''; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;
   background:
-    radial-gradient(120% 80% at 30% 18%, rgba(255,255,255,0.55), rgba(255,255,255,0) 42%),
-    radial-gradient(90% 90% at 50% 115%, rgba(255,255,255,0.18), rgba(255,255,255,0) 50%);
+    radial-gradient(110% 70% at 30% 14%, rgba(255,255,255,0.3), rgba(255,255,255,0) 38%),
+    radial-gradient(90% 90% at 50% 115%, rgba(255,255,255,0.12), rgba(255,255,255,0) 50%);
   box-shadow:
-    inset 0 0 0 1px rgba(255,255,255,0.22),
-    inset 0 -6px 12px rgba(0,0,0,0.35),
+    inset 0 0 0 1px rgba(255,255,255,0.24),
     0 8px 18px -6px rgba(0,0,0,0.55);
 }
 /* the live control, rendered at 160px and scaled into the bead */
@@ -185,7 +184,7 @@ body.nogl .nogl-msg {
 .bead:hover canvas, .bead:focus-visible canvas, .bead.live canvas { filter: none; }
 .bead:hover::before, .bead:focus-visible::before { opacity: 0.55; transform: scale(1.25); }
 .bead:active { transform: translateY(-2px) scale(1.04); }
-body.light .bead::after { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.6), inset 0 -6px 12px rgba(0,0,0,0.25), 0 8px 18px -8px rgba(0,0,0,0.35); }
+body.light .bead::after { box-shadow: inset 0 0 0 1px rgba(255,255,255,0.65), 0 8px 18px -8px rgba(0,0,0,0.35); }
 
 .shelf-caption {
   order: 2; height: 16px; display: flex; gap: 8px; align-items: baseline;

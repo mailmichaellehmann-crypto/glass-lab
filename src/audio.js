@@ -3,11 +3,28 @@
 //   land(v)    soft thud + shimmer when the knob arrives
 //   air(speed) filtered-noise whoosh that follows the knob velocity while it moves
 
+// iOS Safari only lets Web Audio start inside a *finished* gesture (touchend / click / keydown), not on
+// pointerdown, where the controls first ask for sound. So every kit is also woken up on those events:
+// its context is created or resumed and a silent sample is played, which unlocks it for good.
+const kits = new Set();
+const unlock = () => {
+  for (const k of kits) {
+    if (!k.enabled) continue;
+    const ctx = k._ensure();
+    if (!ctx || k._primed) continue;
+    const b = ctx.createBuffer(1, 1, 22050), src = ctx.createBufferSource();
+    src.buffer = b; src.connect(ctx.destination); src.start(0);
+    k._primed = true;
+  }
+};
+for (const ev of ['touchend', 'click', 'keydown', 'pointerup']) addEventListener(ev, unlock, { capture: true, passive: true });
+
 export class Sfx {
   constructor() {
     this.ctx = null;
     this.enabled = true;
     this.volume = 0.5;
+    kits.add(this);
   }
 
   _ensure() {

@@ -12,7 +12,7 @@ import { Motion } from './sensors.js';
 import { sunElevation, guessLocation } from './sun.js';
 import { DEFAULTS, SCHEMA, loadParams, saveParams } from './params.js';
 import { createPanel } from './panel.js';
-const buzz = pat => { if (navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); }; // only after a real touch
+import { buzz } from './haptics.js'; // vibrate on Android, the system tick on iPhone; only after a real touch
 
 const canvas = document.getElementById('gl');
 const hint = document.getElementById('hint');

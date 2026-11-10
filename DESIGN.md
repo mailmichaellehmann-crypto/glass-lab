@@ -44,7 +44,7 @@ inklusive dessen, was nicht funktioniert hat. Ein neues Element ist fertig, wenn
 
 ## 5. Ton & Haptik
 - Jede Interaktion hat einen leisen, passenden Ton (`ping`, `tick`, `drip`, `land`, `air`, `key`), Raster klicken.
-- Vibration nur über `st.buzz()` (nie in Miniaturen, nie vor der ersten Berührung); Ton über `st.sfx` (in Vorschauen stumm). Nie `navigator.vibrate` direkt aufrufen.
+- Vibration nur über `st.buzz()` bzw. `buzz()` aus `src/haptics.js` (Android: Vibration, iPhone: System-Tick über einen versteckten Schalter, iOS 18+; nie in Miniaturen, nie vor der ersten Berührung). Ton über `st.sfx` (in Vorschauen stumm); er wird bei der ersten abgeschlossenen Berührung freigeschaltet (iOS). Nie `navigator.vibrate` direkt aufrufen.
 
 ## 6. Hell & Dunkel
 - Jedes Element sieht in **beiden Themes** richtig aus und folgt `window.glassTheme` **stufenlos**.

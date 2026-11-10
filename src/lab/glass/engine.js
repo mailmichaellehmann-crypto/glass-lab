@@ -3,6 +3,7 @@
 // a tiny 3×5 pixel font. Mirrors how the toggle itself is built.
 
 import { autosize, pointer, makeCanvas, loop, loseContext, glProgramAsync, fullscreenTriangle, rand, reducedMotion } from '../kit.js';
+import { buzz as hapticBuzz } from '../../haptics.js';
 import { LIB } from './lib.glsl.js';
 import { Sfx } from '../../audio.js';
 
@@ -222,7 +223,7 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).t
   st.local = m => [st.dp[0] - st.cx - (m?.ox || 0), st.dp[1] - st.cy - (m?.oy || 0)];
   st.pulse = (v = 1) => { st.kick = Math.max(st.kick, v); };
   // haptics: never in a shelf miniature, never before the user has touched the page
-  st.buzz = pat => { if (!thumb && navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); };
+  st.buzz = pat => { if (!thumb) hapticBuzz(pat); };
   const sparkBuf = new Float32Array(28 * 4);
   const calm = reducedMotion();
   const now = () => performance.now() / 1000;
@@ -361,7 +362,17 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).t
   canvas.glassCapture = (theme, ctx, size) => {
     if (!prog || !lastFrame) return false;
     forcedTheme = theme; st.render(...lastFrame); forcedTheme = null;
-    ctx.clearRect(0, 0, size, size); ctx.drawImage(canvas, 0, 0, size, size);
+    // shrink in halving steps with high-quality smoothing: one big jump would alias the pixels to grey mush
+    let src = canvas, w = canvas.width, h = canvas.height;
+    while (w > size * 2) {
+      const t = document.createElement('canvas');
+      t.width = Math.max(size, Math.round(w / 2)); t.height = Math.max(size, Math.round(h / 2));
+      const tc = t.getContext('2d'); tc.imageSmoothingQuality = 'high';
+      tc.drawImage(src, 0, 0, t.width, t.height);
+      src = t; w = t.width; h = t.height;
+    }
+    ctx.imageSmoothingQuality = 'high';
+    ctx.clearRect(0, 0, size, size); ctx.drawImage(src, 0, 0, size, size);
     return true;
   };
 
