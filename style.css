@@ -46,7 +46,7 @@ canvas#gl {
 .brand p { margin: 6px 0 0; font-size: 12.5px; color: var(--fg-dim); max-width: 300px; line-height: 1.45; transition: color 0.6s ease; }
 
 #hint {
-  position: fixed; left: 0; right: 0; top: calc(var(--shelf-top, 70vh) + 88px);
+  position: fixed; left: 0; right: 0; top: calc(var(--shelf-top, 70vh) + 88px + (var(--rows, 1) - 1) * 50px); /* below every row of beads */
   text-align: center; pointer-events: none;
   font: 500 11px/1 var(--font); letter-spacing: 0.18em; text-transform: uppercase;
   color: var(--fg-faint); transition: color 0.6s ease;
@@ -143,7 +143,7 @@ body.nogl .nogl-msg {
   pointer-events: none; z-index: 5;
   transition: opacity 0.5s ease;
 }
-.shelf ul { display: flex; gap: 12px; margin: 0; padding: 0; list-style: none; pointer-events: auto; }
+.shelf ul { display: grid; grid-template-columns: repeat(var(--cols, 14), 38px); gap: 12px; margin: 0; padding: 0; list-style: none; pointer-events: auto; }
 .bead {
   position: relative; width: 38px; height: 38px; padding: 0; border: 0; border-radius: 50%;
   background: none; cursor: pointer; isolation: isolate;
@@ -279,10 +279,6 @@ body.lab-open .brand, body.lab-open .keys, body.lab-open #hint, body.lab-open .p
   .lab-title h2 { font-size: 18px; }
 }
 /* too narrow for one row of beads: two even rows of seven, and the hint moves below them */
-@media (max-width: 760px) {
-  .shelf ul { display: grid; grid-template-columns: repeat(7, 38px); gap: 12px; }
-  #hint { top: calc(var(--shelf-top, 70vh) + 138px); }
-}
 @media (max-height: 820px) { .keys { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   .lab-stage, .lab-stage.open { transition: visibility 0s, opacity 0.3s; clip-path: none; }

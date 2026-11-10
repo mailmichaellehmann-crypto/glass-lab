@@ -71,4 +71,19 @@ export const EXPERIMENTS = [
     how: 'Click the drop or the link (or press Enter / ⌘C) · the link is really copied',
     bg: '#0b0b0b', accent: '#8fb8ff', load: () => import('./exp/copy.js'),
   },
+  {
+    id: 'scrub', thumb: { span: 340, fx: -12, fy: 0, still: { demo: true, wait: 1700 } }, hint: 'Play · drag the playhead', name: 'Scrub', line: 'an audio player you can scrub like tape',
+    how: 'Play or pause with the glass button (or Space) · drag the playhead to scrub, faster rings higher · ← → skip',
+    bg: '#0b0b0b', accent: '#7ab8ff', load: () => import('./exp/scrub.js'),
+  },
+  {
+    id: 'timer', thumb: { span: 230, fx: 0, fy: 0, still: { demo: true, wait: 1300 } }, hint: 'Turn the disc to wind it up', name: 'Timer', line: 'a wind-up kitchen timer of thick glass',
+    how: 'Turn the disc clockwise to wind it up, let go to start · tap to pause · tap to stop the bell · ↑ ↓ minutes, Space start/pause',
+    bg: '#0b0b0b', accent: '#ff8a3d', load: () => import('./exp/timer.js'),
+  },
+  {
+    id: 'secret', thumb: { span: 290, fx: 0, fy: 0, still: { demo: true, wait: 1500 } }, hint: 'Type · slide the lens to decode', name: 'Secret', line: 'a password field with a decoding lens',
+    how: 'Type a password · slide the glass lens over the dots to read them · tap the lens to reveal all · the tube shows its strength · Enter to save',
+    bg: '#0b0b0b', accent: '#b38bff', load: () => import('./exp/secret.js'),
+  },
 ];

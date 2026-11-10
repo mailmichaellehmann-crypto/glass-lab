@@ -106,6 +106,16 @@ export class Sfx {
     this._partial(700 + pitch * 300, 0.04, 0.05, t);
   }
 
+  // a soft bell-like note (a music box / glass marimba): freq in Hz, dur in s
+  note(freq, gain = 1, dur = 0.6) {
+    const ctx = this._ensure(); if (!ctx) return;
+    const t = ctx.currentTime;
+    this._partial(freq, 0.16 * gain, dur, t);
+    this._partial(freq * 2, 0.05 * gain, dur * 0.6, t);
+    this._partial(freq * 3.01, 0.025 * gain, dur * 0.35, t);
+    this._partial(freq * 4.2, 0.012 * gain, dur * 0.2, t);
+  }
+
   land(strength = 1) {
     const ctx = this._ensure(); if (!ctx) return;
     const t = ctx.currentTime;

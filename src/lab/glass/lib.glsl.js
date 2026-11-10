@@ -289,3 +289,26 @@ vec3 ${fn}(vec2 p, vec2 sp, vec2 c, vec2 rad, float spread, float depthK, vec4 b
   return kc;
 }
 `;
+
+// Thick glass, the toggle's way: a flat face that shows what lies beneath 1:1 (crisp pixels) and a wide
+// bevelled rim that bends the view and fringes it slightly in colour (red bends less, blue more).
+// The caller provides `vec3 scene(vec2 q, vec2 sp, float frost, out float cover)`.
+//   n, depth  outward normal and distance inside the edge; c, hs: centre and half size of the body
+//   bevW      width of the bevel (px), bendK: how far the rim bends the view, caK: colour spread (≈0.08)
+export const thickGlass = (fn, scene) => /* glsl */ `
+vec3 ${fn}(vec2 p, vec2 sp, vec2 n, float depth, vec2 c, vec2 hs, float bevW, float bendK, float caK, float scatter, vec3 light) {
+  float bevel = pow(1.0 - clamp(depth / bevW, 0.0, 1.0), 2.2);
+  vec2 b = -n * bevel * bendK;
+  float frost = 0.02 + 0.9 * bevel;
+  float cover, cr, cb;
+  vec2 bR = b * (1.0 - caK * 3.0), bB = b * (1.0 + caK * 3.0);
+  vec3 g;
+  g.r = ${scene}(p + bR, sp + bR * uScale, frost, cr).r;
+  g.g = ${scene}(p + b, sp + b * uScale, frost, cover).g;
+  g.b = ${scene}(p + bB, sp + bB * uScale, frost, cb).b;
+  vec3 kc = glass(g, n, depth, bevel, p, c, hs, cover, scatter, light);
+  // thickness: a second, deeper reflection band and a dark line where the bevel meets the face
+  kc += exp(-pow((depth - bevW * 0.9) / 2.2, 2.0)) * mix(0.05, 0.08, uTheme);
+  kc *= 1.0 - exp(-pow((depth - bevW) / 1.4, 2.0)) * mix(0.12, 0.05, uTheme);
+  return kc;
+}`;

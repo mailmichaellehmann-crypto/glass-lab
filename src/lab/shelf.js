@@ -9,7 +9,7 @@ import { reducedMotion } from './kit.js';
 
 const BEAD = 38, RENDER = 160; // miniatures render at 160px and are scaled into the 38px bead
 // Stills are cached across visits. Bump when a control's look changes so the cache is retaken.
-const STILLS_VERSION = 'v29';
+const STILLS_VERSION = 'v31';
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 export function createShelf() {
@@ -140,6 +140,16 @@ export function createShelf() {
   requestAnimationFrame(followTheme);
 
   document.body.appendChild(shelf);
+  // as many even rows as the width needs: one long row on a wide screen, two or three on narrow ones
+  const fitRows = () => {
+    const n = beads.length, avail = Math.max(200, innerWidth - 36);
+    const rows = Math.max(1, Math.ceil((n * 50 - 12) / avail));
+    const cols = Math.ceil(n / rows);
+    document.documentElement.style.setProperty('--cols', cols);
+    document.documentElement.style.setProperty('--rows', Math.ceil(n / cols));
+  };
+  fitRows();
+  addEventListener('resize', fitRows);
   stage = createStage(beads);
   return { shelf, stage };
 }

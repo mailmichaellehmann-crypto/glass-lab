@@ -18,7 +18,7 @@ inklusive dessen, was nicht funktioniert hat. Ein neues Element ist fertig, wenn
   chromatische Aberration, Fresnel, Glanzpunkt, der dem Zeiger folgt, heller Rand, Glanzstreifen nach Interaktion.
   Klar, nicht milchig (außer bewusst ganz leicht, wie beim Dial).
 - **Geformte Körper wirken plastisch**: Kuppeln, Facetten (Stars), dicke Kanten. Flache Flächen wirken billig.
-- **Glas über Text**: eine Platte mit flacher Oberseite und abgeschrägter Kante (`glass()` aus der Bibliothek, wie Toggle und Tabs). Nur die Kante bricht, der Text darunter bleibt scharf. Kuppeln, die Text verzerren, wirken unscharf.
+- **Glas über Text**: eine Platte mit flacher Oberseite und abgeschrägter Kante (`thickGlass()` bzw. `glass()` aus der Bibliothek, wie Toggle und Tabs). `thickGlass()` bricht nur die Kante, mit leichten Farbsäumen pro Kanal, und zeigt die Fläche 1:1. Nur die Kante bricht, der Text darunter bleibt scharf. Kuppeln, die Text verzerren, wirken unscharf.
 - **Licht als Material**: Leuchten mit dem `emitC`-Modell (additiv im Dunkeln, Tönung im Hellen), Licht fällt in die
   Mulde und auf den Boden, sammelt sich in Glaskanten. Die Farbe trägt Bedeutung (kalt → warm, Bewertung → Hitze).
 - **Mulden** (`tray`) als Untergrund, in die Seite eingelassen, mit Innenschatten.
