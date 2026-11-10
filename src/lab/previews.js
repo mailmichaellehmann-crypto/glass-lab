@@ -35,6 +35,15 @@ export const PREVIEWS = {
     c.fillStyle = g; c.fillRect(s * 0.3, s * 0.485, s * 0.4, s * 0.03);
     for (const x of [0.3, 0.7]) { c.strokeStyle = 'rgba(255,255,255,0.55)'; c.lineWidth = s * 0.015; c.beginPath(); c.arc(s * x, s / 2, s * 0.12, 0, TAU); c.stroke(); }
   },
+  stars(c, t, s) {
+    base(c, s);
+    const star = (x, y, r) => { c.beginPath(); for (let k = 0; k < 10; k++) { const a = -Math.PI / 2 + k * Math.PI / 5, rr = k % 2 ? r * 0.48 : r; c.lineTo(x + Math.cos(a) * rr, y + Math.sin(a) * rr); } c.closePath(); };
+    [0.27, 0.5, 0.73].forEach((x, i) => {
+      star(s * x, s / 2, s * 0.12);
+      if (i < 2) { glow(c, s * x, s / 2, s * 0.2, 'rgba(255,190,60,A)', 0.4); star(s * x, s / 2, s * 0.12); c.fillStyle = '#ffc23a'; c.fill(); }
+      c.strokeStyle = 'rgba(255,255,255,0.5)'; c.lineWidth = s * 0.012; c.stroke();
+    });
+  },
   drop(c, t, s) {
     base(c, s);
     c.fillStyle = '#060607'; c.beginPath(); c.arc(s * 0.5, s * 0.58, s * 0.2, 0, TAU); c.fill();

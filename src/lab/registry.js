@@ -36,4 +36,9 @@ export const EXPERIMENTS = [
     how: 'Drag either lens · push them together to merge · grab the bridge to move the range · ← → (⇧ for the upper value)',
     bg: '#0b0b0b', accent: '#b07cff', load: () => import('./exp/bridge.js'),
   },
+  {
+    id: 'stars', thumb: { span: 290, fx: 0, fy: 0, still: { demo: true, wait: 2450 } }, hint: 'Hover · tap a star', name: 'Stars', line: 'a rating in five glass stars',
+    how: 'Hover to pour light in · tap to rate · tap again to clear · ← → or 0–5',
+    bg: '#0b0b0b', accent: '#ffc23a', load: () => import('./exp/stars.js'),
+  },
 ];
