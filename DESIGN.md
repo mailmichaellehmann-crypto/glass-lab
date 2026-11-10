@@ -64,6 +64,10 @@ inklusive dessen, was nicht funktioniert hat. Ein neues Element ist fertig, wenn
 - Ziel: < 1 ms CPU pro Frame im Mittel, keine Janks; Pixel-Upload nur bei Änderung.
 - `dispose()` räumt alles auf; nach vielen Öffnen/Schließen-Zyklen keine zusätzlichen Canvases/Kontexte.
 - Im Browser prüfen: alle Interaktionen, beide Themes, Perle, `?perf`, Konsole fehlerfrei.
+- Uniform-Namen dürfen nicht mit der gemeinsamen Bibliothek kollidieren (z. B. `uWave`, `uKick`, `uSweep` sind vergeben).
+- Zählende Zahlen (Prozent, Zähler) wechseln **sofort** (`set(..., { instant: true })`), sonst kommen die Pixelfedern nie zur Ruhe und die Zahl verschmiert.
+- Das Zeiger-Licht darf flache Kanten nicht von unten anstrahlen (harte Striche); wo der Zeiger meist unterhalb ist, nur leicht folgen lassen.
+- Beim Loslassen zählt die Position der Hand, nicht die des nachziehenden Objekts.
 
 ## 10. Ablauf für ein neues Element
 1. `src/lab/exp/<id>.js` mit `mount(root, { reducedMotion, thumb, demo })`.

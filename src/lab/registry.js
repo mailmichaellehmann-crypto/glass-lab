@@ -51,4 +51,14 @@ export const EXPERIMENTS = [
     how: 'Drag the lens to the end to send · let go early and it springs back · Enter slides it for you',
     bg: '#0b0b0b', accent: '#ff6a88', load: () => import('./exp/commit.js'),
   },
+  {
+    id: 'pool', thumb: { span: 230, fx: 0, fy: 0, still: { demo: true, wait: 1900 } }, hint: 'Drop the card into the light', name: 'Pool', line: 'an upload zone of liquid light',
+    how: 'Drag the card (or a file from your computer) into the pool · click the pool to choose a file · nothing is uploaded',
+    bg: '#0b0b0b', accent: '#5ad1ff', load: () => import('./exp/pool.js'),
+  },
+  {
+    id: 'pin', thumb: { span: 290, fx: 0, fy: 0, still: { demo: true, wait: 1150 } }, hint: 'The code is 2580', name: 'PIN', line: 'a code in four glass cells',
+    how: 'Type 2580 on the keypad or your keyboard (or a wrong code to see it shake) · ⌫ deletes',
+    bg: '#0b0b0b', accent: '#9b8cff', load: () => import('./exp/pin.js'),
+  },
 ];
