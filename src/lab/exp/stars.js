@@ -138,7 +138,7 @@ vec3 starGlass(vec2 p, vec2 sp, float sd, int i) {
   float lam = dot(n3, Lsun);
   kc *= 0.86 + 0.22 * lam;
   // smoky body like the toggle's glass, so an empty star still reads as glass on the dark tray
-  kc = mix(kc, kc * 0.84 + vec3(0.13) * (0.55 + 0.6 * lam), 1.0 - uTheme);
+  kc = mix(kc, kc * 0.84 + vec3(0.21) * (0.55 + 0.7 * lam), 1.0 - uTheme);
   kc += (lam - 0.72) * mix(0.42, 0.22, uTheme);
   kc = mix(kc, mix(kc, vec3(0.98), 0.35), uTheme * (1.0 - u * 0.5));
 
