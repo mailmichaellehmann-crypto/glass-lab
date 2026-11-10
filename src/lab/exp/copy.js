@@ -207,7 +207,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
           st.burst((D1[0] + d2.x) / 2, d2.y / 2, 8, 0.4);
           icon.set(bitmapCells(CHECK, 2.4));
           st.light = OK;
-          later(0.05, () => { S.ping(true); st.glint(); st.pulse(0.8); done = 1; });
+          later(0.05, () => { S.ping(true); st.glint(); st.pulse(1); st.shock((D1[0] + d2.x) / 2, d2.y / 2); done = 1; }); // the tear rings out
         }
       }
       // volume: both are a little smaller while they share one body; the copy evaporates as it rises

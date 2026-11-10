@@ -254,6 +254,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
 
   // ---------------------------------------------------------------- input
   const local = d => [d[0] - st.cx, d[1] - st.cy];
+  let hoverKey = -1; // the key under the pointer swells and lights a little: it shows what is pressable
   const keyAt = ([x, y]) => keys.findIndex((k, i) => Math.hypot(x - keyPos[i][0], y - keyPos[i][1]) < KR + 4);
   st.bindPointer({
     down: (p, e, d) => {
@@ -263,7 +264,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       const k = KEYS[i];
       if (k === 'back') back(); else type(k);
     },
-    move: (p, e, d) => { st.canvas.style.cursor = keyAt(local(d)) >= 0 ? 'pointer' : 'default'; },
+    move: (p, e, d) => { hoverKey = keyAt(local(d)); st.canvas.style.cursor = hoverKey >= 0 ? 'pointer' : 'default'; },
   });
   const onKey = e => {
     if (/^[0-9]$/.test(e.key)) { e.preventDefault(); S._ensure(); type(e.key); }
@@ -314,7 +315,8 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     keys.forEach((k, i) => {
       k.press *= Math.exp(-dt * 6);
       const j = k.jelly.step(dt) * 0.03;
-      keyU.push(st.cx + keyPos[i][0], st.cy + keyPos[i][1], KR * (1 + j) * (1 - k.press * 0.05), k.press);
+      k.hov = (k.hov || 0) + ((i === hoverKey && st.ptrOn > 0.3 ? 1 : 0) - (k.hov || 0)) * Math.min(1, dt * 10);
+      keyU.push(st.cx + keyPos[i][0], st.cy + keyPos[i][1], KR * (1 + j) * (1 - k.press * 0.05) * (1 + k.hov * 0.06), Math.min(1, k.press + k.hov * 0.24));
       k.m.step(dt, { ptr: st.local(k.m), shy: st.ptrOn * 0.6 });
     });
 

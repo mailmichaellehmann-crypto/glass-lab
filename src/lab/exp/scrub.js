@@ -179,7 +179,11 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       if (pos <= 0) { pos = 0; posV = 0; rewinding = false; headJ.kick(3); S.tick(0.4, 0.5); }
     } else if (playing) {
       pos += dt / STEP_T; posV = 1 / STEP_T;
-      if (pos >= NBAR) { pos = NBAR; setPlaying(false); rewinding = true; S.drip(0.4, 0.4); }
+      if (pos >= NBAR) {
+        pos = NBAR; setPlaying(false); rewinding = true; S.drip(0.4, 0.4);
+        // the last note lands: the head strikes the end of the rail before it runs back
+        st.shock(RX + RAIL[0] - 12, 0); st.burst(RX + RAIL[0] + 4, 0, 12, 0.8, 0, 1.1); st.glint(); st.pulse(1); headJ.kick(4); st.buzz([10, 30, 10]);
+      }
     } else {
       // a jump by keyboard or click glides
       const k = 300, c = 2 * Math.sqrt(k) * 0.85;

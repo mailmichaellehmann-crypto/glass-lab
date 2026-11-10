@@ -268,7 +268,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     if (nowMerged !== merged) {
       merged = nowMerged;
       const mid = (lens[0].x + lens[1].x) / 2;
-      if (merged) { lens.forEach(L => L.jelly.kick(5)); S.drip(0.6, 0.9); st.pulse(0.7); buzz(8); }
+      if (merged) { lens.forEach(L => L.jelly.kick(5)); S.drip(0.6, 0.9); st.pulse(0.9); st.burst(mid, 0, 8, 0.45); st.glint(); buzz(8); } // fusing throws a few sparks too
       else { lens.forEach(L => L.jelly.kick(-6)); S.drip(0.9, 0.7); S.tick(0.9, 1.1); st.burst(mid, 0, 10, 0.6); st.glint(); buzz([6, 20, 6]); }
     }
     // smooth-union strength grows as they approach, so they reach for each other before touching

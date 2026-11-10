@@ -233,7 +233,11 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
           if (!w.settled && Math.abs(w.pos - w.tgt) < 0.02 && Math.abs(w.vel) < 0.08) {
             w.settled = true;
             const val = wrap(w, w.tgt);
-            if (val !== w.val) { w.val = val; S.drip(0.55 + i * 0.15, 0.35); rod.kick(1.6); st.pulse(0.35); buzz(6); }
+            if (val !== w.val) {
+              w.val = val; S.drip(0.55 + i * 0.15, 0.35); rod.kick(1.6); st.pulse(0.5); buzz(6);
+              // the drum locks in: the rod spits a few sparks from both ends
+              st.burst(-ROD[0], 0, 4, 0.4, Math.PI, 0.7); st.burst(ROD[0], 0, 4, 0.4, 0, 0.7);
+            }
           }
         }
       }
