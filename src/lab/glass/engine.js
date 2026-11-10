@@ -281,7 +281,7 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).t
     const res = s.dpr * Math.max(st.S, 1);
     pcan.width = Math.round(box[0] * res); pcan.height = Math.round(box[1] * res);
     gcan.width = Math.round(box[0] * res / 2); gcan.height = Math.round(box[1] * res / 2);
-  }, 2);
+  }, thumb ? 2 : 3); // full device resolution (3x phones): anything less is scaled up and looks soft
 
   st.toDesign = (x, y) => [st.cx + (x - st.cx) / st.S, st.cy + (y - st.cy) / st.S];
   // thumbnails only: glide the framing toward a design-space point (offset from the design centre),
@@ -408,16 +408,21 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).t
   };
 
   st.run = step => {
-    let born = false, frames = 0;
+    let born = false, frames = 0, slowN = 0, slowSum = 0;
     const L = loop((dt, t) => {
       const t0 = performance.now();
       // power-on: a control arrives with a surge of its light and a glint wiping across the glass
       if (!born && prog) { born = true; if (!thumb && !calm) { st.glint(); st.pulse(1); } }
-      else if (born && !thumb && gathered.length && ++frames > 3) {
+      else if (born && !thumb && ++frames > 3 && gathered.length) {
         for (const m of gathered) if (!m.stepped) for (const p of m.px) { p.x = p.tx; p.y = p.ty; p.b = p.tb; p.vx = p.vy = 0; p.delay = 0; }
         gathered.length = 0;
       }
       if (born && !thumb && !calm && now() - Math.max(lastTouch, idleGlint) > 9) { idleGlint = now(); st.glint(); }
+      // 3x is only kept where the device holds its frame rate; otherwise fall back to 2x once
+      if (!thumb && st.dpr > 2 && frames > 3 && slowN < 70) {
+        slowN++; if (slowN > 10) slowSum += dt;
+        if (slowN === 70 && slowSum / 60 > 0.021) view.setMaxDpr(2);
+      }
       st.trackPointer(dt); stepFx(dt); st.kick *= Math.exp(-dt * 3.5); step(dt, t);
       if (PERF) { const ms = performance.now() - t0; PERF.n++; PERF.sum += ms; PERF.max = Math.max(PERF.max, ms); }
     });

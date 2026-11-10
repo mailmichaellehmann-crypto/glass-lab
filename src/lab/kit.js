@@ -37,7 +37,7 @@ export function autosize(canvas, onResize, maxDpr = 2) {
   const ro = new ResizeObserver(apply);
   ro.observe(canvas.parentElement);
   apply();
-  return { size, dispose: () => ro.disconnect() };
+  return { size, dispose: () => ro.disconnect(), setMaxDpr(v) { if (v !== maxDpr) { maxDpr = v; apply(); } } };
 }
 
 // Pointer state in CSS px relative to the element, with smoothed velocity.

@@ -129,7 +129,7 @@ vec3 cellGlass(vec2 p, vec2 sp, float sd) {
   vec2 oG = vec2(tG.x, -tG.y) / max(-tG.z, 0.3) * thick;
   vec2 oB = vec2(tB.x, -tB.y) / max(-tB.z, 0.3) * thick;
   // the tight rim focuses single pixels into bright ghost dots: let it scatter them instead
-  float frost = 0.04 + 0.85 * pow(1.0 - u, 3.0);
+  float frost = 0.02 + 0.6 * pow(1.0 - u, 3.0);
   vec3 kc = vec3(scene(p + oR, sp + oR * uScale, frost).r, scene(p + oG, sp + oG * uScale, frost).g, scene(p + oB, sp + oB * uScale, frost).b);
   kc = mix(kc, kc * 0.86 + vec3(0.1), 1.0 - uTheme);
   kc = emitC(kc, uL, (filamentScatter(caret(p)) * 0.7 * uCaretOn + (uErr + uMerge * 0.6) * (0.25 + 0.5 * (1.0 - u))) * uEnergy);

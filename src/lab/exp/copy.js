@@ -70,7 +70,7 @@ vec3 dropGlass(vec2 p, vec2 sp, float sd) {
   vec2 oR = vec2(tR.x, -tR.y) / max(-tR.z, 0.3) * thick;
   vec2 oG = vec2(tG.x, -tG.y) / max(-tG.z, 0.3) * thick;
   vec2 oB = vec2(tB.x, -tB.y) / max(-tB.z, 0.3) * thick;
-  float frost = 0.04 + 0.6 * pow(1.0 - u, 3.0);
+  float frost = 0.015 + 0.38 * pow(1.0 - u, 3.0);
   vec3 kc = vec3(scene(p + oR, sp + oR * uScale, frost).r, scene(p + oG, sp + oG * uScale, frost).g, scene(p + oB, sp + oB * uScale, frost).b);
   kc = mix(kc, kc * 0.86 + vec3(0.1), 1.0 - uTheme);
   kc = emitC(kc, uL, (0.12 + filamentScatter(fil(p)) * 0.7 * uFilOn + uSel * 0.3) * (0.35 + 0.65 * (1.0 - u)) * uEnergy);

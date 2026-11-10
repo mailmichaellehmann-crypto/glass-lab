@@ -17,6 +17,8 @@ inklusive dessen, was nicht funktioniert hat. Ein neues Element ist fertig, wenn
 - **Echtes Glas** als SDF-Körper: Brechung **pro Farbkanal** (IOR ca. 1,44 / 1,50 / 1,57–1,60) für leichte
   chromatische Aberration, Fresnel, Glanzpunkt, der dem Zeiger folgt, heller Rand, Glanzstreifen nach Interaktion.
   Klar, nicht milchig (außer bewusst ganz leicht, wie beim Dial).
+- **Klares Glas, kein Gel:** kaum Grauschleier im Körper (`g * 0.93 + 0.07`), dafür eine harte Kante: Lichtlinie ganz außen, dunkle Linie direkt dahinter (`edgeCut()` in der Bibliothek, steckt in `glass()`). Der Rand biegt die Sicht, mattiert sie aber kaum (Frost im Rand höchstens ca. 0,5, auf der Fläche ca. 0,02). Farbsäume fein halten (IOR-Spreizung wie oben), Zahlen dürfen nie in RGB zerfallen.
+- **Volle Geräteauflösung:** Lab und Toggle rendern bis 3x (iPhone); hält ein Gerät die Bildrate nicht, fällt die Engine einmalig auf 2x zurück.
 - **Geformte Körper wirken plastisch**: Kuppeln, Facetten (Stars), dicke Kanten. Flache Flächen wirken billig.
 - **Glas über Text**: eine Platte mit flacher Oberseite und abgeschrägter Kante (`thickGlass()` bzw. `glass()` aus der Bibliothek, wie Toggle und Tabs). `thickGlass()` bricht nur die Kante, mit leichten Farbsäumen pro Kanal, und zeigt die Fläche 1:1. Nur die Kante bricht, der Text darunter bleibt scharf. Kuppeln, die Text verzerren, wirken unscharf.
 - **Licht als Material**: Leuchten mit dem `emitC`-Modell (additiv im Dunkeln, Tönung im Hellen), Licht fällt in die

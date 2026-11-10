@@ -222,8 +222,9 @@ void main() {
     vec3 g = below(p + bend, frost, (n * bevel * 3.2 + rel * 0.006) * uDisp);
 
     float vy = clamp((p.y - (uK.y - uKH.y)) / (2.0 * uKH.y), 0.0, 1.0);
-    vec3 darkGlass  = g * 0.84 + vec3(0.135) * (1.0 - vy * 0.55);
-    vec3 lightGlass = mix(g, vec3(0.99), 0.5 * (1.0 - gCover * 0.8));
+    // clear glass, like every lab control: almost no grey veil, the edge does the work
+    vec3 darkGlass  = g * 0.93 + vec3(0.07) * (1.0 - vy * 0.6);
+    vec3 lightGlass = mix(g, vec3(0.99), 0.38 * (1.0 - gCover * 0.8));
     vec3 kc = mix(darkGlass, lightGlass, th);
 
     float sq = max(stripDist(p), 0.0);
@@ -237,7 +238,9 @@ void main() {
     kc += pow(max(ndl, 0.0), 2.0) * exp(-depth / 1.25) * mix(0.42, 0.7, th);
     kc += max(ndl, 0.0) * bevel * mix(0.07, 0.16, th);
     kc *= 1.0 - max(-ndl, 0.0) * bevel * mix(0.28, 0.07, th);
-    kc += exp(-depth / 0.7) * mix(0.07, 0.12, th);
+    // the cut of the glass: a dark line just inside the edge, a hairline of light on it
+    kc *= 1.0 - exp(-pow((depth - 2.3) / 1.0, 2.0)) * mix(0.22, 0.1, th);
+    kc += (1.0 - smoothstep(0.0, 1.2, depth)) * mix(0.17, 0.2, th) * (0.55 + 0.45 * max(ndl, 0.0));
     kc += exp(-length(p - uPtr) / 34.0) * uPtrOn * (1.0 - bevel) * mix(0.07, 0.06, th);
 
     if (uSweep < 1.2) {
@@ -267,10 +270,10 @@ void main() {
   // the lab's finish: white-hot highlights, a film shoulder in the dark, a quiet vignette
   float peak = max(col.r, max(col.g, col.b));
   col += max(peak - 1.0, 0.0) * 0.3;
-  vec3 over = max(col - 0.78, 0.0);
-  col = mix(min(col, 0.78) + 0.22 * (1.0 - exp(-over / 0.22)), col, th);
+  vec3 over = max(col - 0.84, 0.0);
+  col = mix(min(col, 0.84) + 0.16 * (1.0 - exp(-over / 0.16)), col, th);
   vec2 vg = (gl_FragCoord.xy / uRes - 0.5) * vec2(uRes.x / uRes.y, 1.0);
   col *= 1.0 - smoothstep(0.35, 1.1, length(vg)) * mix(0.32, 0.07, th);
-  col += (hash12(gl_FragCoord.xy + fract(uTime) * 91.7) - 0.5) * 0.022;
+  col += (hash12(gl_FragCoord.xy + fract(uTime) * 91.7) - 0.5) * 0.013;
   fragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
 }`;

@@ -92,7 +92,7 @@ void main() {
     vec2 oR = vec2(tR.x, -tR.y) / max(-tR.z, 0.3) * thick - rel * 0.037;
     vec2 oG = vec2(tG.x, -tG.y) / max(-tG.z, 0.3) * thick - rel * 0.045;
     vec2 oB = vec2(tB.x, -tB.y) / max(-tB.z, 0.3) * thick - rel * 0.054;
-    float frost = 0.06 + 0.45 * pow(1.0 - u, 3.0);
+    float frost = 0.02 + 0.3 * pow(1.0 - u, 3.0);
     float cR, cG, cB;
     vec3 gR = behind(p + oR, sp + oR * uScale, frost, energy, cR);
     vec3 gG = behind(p + oG, sp + oG * uScale, frost, energy, cG);

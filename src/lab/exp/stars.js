@@ -131,7 +131,7 @@ vec3 starGlass(vec2 p, vec2 sp, float sd, int i) {
   vec2 oR = vec2(tR.x, -tR.y) / max(-tR.z, 0.3) * thick;
   vec2 oG = vec2(tG.x, -tG.y) / max(-tG.z, 0.3) * thick;
   vec2 oB = vec2(tB.x, -tB.y) / max(-tB.z, 0.3) * thick;
-  float frost = 0.08 + 0.25 * (1.0 - u);
+  float frost = 0.03 + 0.2 * (1.0 - u);
   vec3 kc = vec3(scene(p + oR, sp + oR * uScale, frost).r, scene(p + oG, sp + oG * uScale, frost).g, scene(p + oB, sp + oB * uScale, frost).b);
 
   // facet shading: faces turned to the light are brighter, the others fall off

@@ -124,15 +124,15 @@ void main() {
     float hgt = sqrt(max(1.0 - x * x, 0.0));                 // dome height (0 at the rim, 1 on top)
     vec3 n3 = normalize(vec3(qk.x / uRK, -qk.y / uRK, hgt + 0.02)); // y up in 3D
     vec3 V = vec3(0.0, 0.0, -1.0);
-    // refraction toward the tray floor, separately per channel: strong chromatic aberration
+    // refraction toward the tray floor, separately per channel: fine colour fringes, the number itself stays in one piece
     float thick = hgt * uRK * 1.05 + 16.0;
-    vec3 tR = refract(V, n3, 1.0 / 1.38);
+    vec3 tR = refract(V, n3, 1.0 / 1.455);
     vec3 tG = refract(V, n3, 1.0 / 1.50);
-    vec3 tB = refract(V, n3, 1.0 / 1.68);
+    vec3 tB = refract(V, n3, 1.0 / 1.555);
     vec2 oR = vec2(tR.x, -tR.y) / max(-tR.z, 0.25) * thick;
     vec2 oG = vec2(tG.x, -tG.y) / max(-tG.z, 0.25) * thick;
     vec2 oB = vec2(tB.x, -tB.y) / max(-tB.z, 0.25) * thick;
-    float frost = 0.2 + 0.4 * pow(x, 4.0); // slightly milky glass: everything behind it softens a little
+    float frost = 0.07 + 0.3 * pow(x, 4.0); // clear glass with only a breath of softness toward the rim
     float cR, cG, cB;
     vec3 gR = trayAt(p + oR, sp + oR * uScale, cR, frost, vec2(0.0));
     vec3 gG = trayAt(p + oG, sp + oG * uScale, cG, frost, vec2(0.0));
@@ -144,7 +144,7 @@ void main() {
     kc += mix(vec3(0.03, 0.035, 0.045), vec3(0.06), uTheme) * hgt;
     // milk: a faint opal haze, densest where the glass is thickest, that also catches the ring's light
     vec3 milk = mix(vec3(0.5, 0.52, 0.57), vec3(0.97, 0.97, 0.98), uTheme);
-    kc = mix(kc, milk, 0.08 + 0.07 * hgt);
+    kc = mix(kc, milk, 0.025 + 0.03 * hgt);
     kc = emitC(kc, ramp(uVal), 0.06 * hgt);
 
     // light from the LED ring and filament scattering inside the glass
@@ -174,7 +174,7 @@ void main() {
     // a curved softbox window reflected across the upper dome
     float wx = R.x + 0.28, wy = R.y - 0.52;
     float win = smoothstep(0.2, 0.14, abs(wx)) * smoothstep(0.17, 0.1, abs(wy)) * smoothstep(0.1, 0.4, R.z);
-    kc += win * mix(0.32, 0.5, uTheme);
+    kc += win * mix(0.2, 0.34, uTheme);
     // light gathered inside the dome: a bright crescent on the side away from the light
     vec2 away = -normalize(L.xy + 1e-4);
     float cres = smoothstep(0.55, 0.85, x) * smoothstep(1.0, 0.86, x) * max(dot(normalize(vec2(qk.x, -qk.y) + 1e-4), away), 0.0);

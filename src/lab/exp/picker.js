@@ -52,7 +52,7 @@ vec3 scene(vec2 q, vec2 sp, float frost) {
   }
   float cover;
   // rows on the curved part of the drum: softer and colour-fringed (they are seen at an angle)
-  return ink(col, q, max(frost, fr * 0.75), vec2(0.0, dy * 2.4 * fr), exp(-abs(q.y - uC.y - uRodY) / 14.0) * 0.5, uL, cover);
+  return ink(col, q, max(frost, fr * 0.38), vec2(0.0, dy * 1.2 * fr), exp(-abs(q.y - uC.y - uRodY) / 14.0) * 0.5, uL, cover);
 }
 
 vec3 rodGlass(vec2 p, vec2 sp, float sd) {

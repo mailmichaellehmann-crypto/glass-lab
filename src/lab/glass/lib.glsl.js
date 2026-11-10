@@ -156,8 +156,16 @@ vec3 ink(vec3 base, vec2 p, float frost, vec2 ca, float wash, vec3 light, out fl
   inkc = mix(inkc + light * wash * 0.9, inkc + vec3(0.25, 0.08, 0.0) * wash, uTheme);
   cover = clamp(a.g, 0.0, 1.0);
   vec3 col = mix(base, inkc, clamp(a, 0.0, 1.0));
-  col += mix(vec3(1.0, 0.8, 0.6), light, 0.35) * icon(uGlow, p) * 0.38 * (1.0 - uTheme); // a faint halo; more blurs the edges
+  col += mix(vec3(1.0, 0.8, 0.6), light, 0.35) * icon(uGlow, p) * 0.27 * (1.0 - uTheme); // a faint halo; more blurs the edges
   return col;
+}
+
+// The cut of the glass: a hairline of light on the very edge and a dark line just inside it, where the
+// view turns away. This is what makes a body read as clear, hard glass and not as a soft gel.
+vec3 edgeCut(vec3 kc, float depth, float lit) {
+  kc *= 1.0 - exp(-pow((depth - 2.3) / 1.0, 2.0)) * mix(0.22, 0.1, uTheme);
+  kc += (1.0 - smoothstep(0.0, 1.2, depth)) * mix(0.17, 0.2, uTheme) * lit;
+  return kc;
 }
 
 // Glass body shading, given what is seen through it (g) and the local geometry.
@@ -165,8 +173,9 @@ vec3 ink(vec3 base, vec2 p, float frost, vec2 ca, float wash, vec3 light, out fl
 vec3 glass(vec3 g, vec2 n, float depth, float bevel, vec2 p, vec2 c, vec2 hs, float cover, float scatter, vec3 light) {
   float th = uTheme;
   float vy = clamp((p.y - (c.y - hs.y)) / (2.0 * hs.y), 0.0, 1.0);
-  vec3 darkGlass = g * 0.84 + vec3(0.135) * (1.0 - vy * 0.55);
-  vec3 lightGlass = mix(g, vec3(0.99), 0.5 * (1.0 - cover * 0.8));
+  // clear glass: what lies beneath shows almost untouched, only a trace of body (a grey veil reads as plastic)
+  vec3 darkGlass = g * 0.93 + vec3(0.07) * (1.0 - vy * 0.6);
+  vec3 lightGlass = mix(g, vec3(0.99), 0.38 * (1.0 - cover * 0.8));
   vec3 kc = mix(darkGlass, lightGlass, th);
   kc = emitC(kc, light, scatter * 0.8);
   kc = emitC(kc, light, exp(-depth / 2.2) * scatter * 1.1);
@@ -176,7 +185,7 @@ vec3 glass(vec3 g, vec2 n, float depth, float bevel, vec2 p, vec2 c, vec2 hs, fl
   kc += pow(max(ndl, 0.0), 2.0) * exp(-depth / 1.25) * mix(0.42, 0.7, th);
   kc += max(ndl, 0.0) * bevel * mix(0.07, 0.16, th);
   kc *= 1.0 - max(-ndl, 0.0) * bevel * mix(0.28, 0.07, th);
-  kc += exp(-depth / 0.7) * mix(0.07, 0.12, th);
+  kc = edgeCut(kc, depth, 0.55 + 0.45 * max(ndl, 0.0));
   kc += exp(-length(p - uPtr) / 34.0) * uPtrOn * (1.0 - bevel) * mix(0.07, 0.06, th);
   // light focused through the body: a thin bright line inside the far (shadowed) rim
   kc += exp(-abs(depth - 5.5) / 1.4) * max(-ndl, 0.0) * mix(0.16, 0.22, th);
@@ -200,7 +209,7 @@ vec3 finish(vec3 col) {
   float peak = max(col.r, max(col.g, col.b));
   col += max(peak - 1.0, 0.0) * 0.3;
   // soft shoulder above the knee: highlights roll off like film, everything below is untouched
-  const float K = 0.78;
+  const float K = 0.84;
   vec3 over = max(col - K, 0.0);
   vec3 rolled = min(col, K) + (1.0 - K) * (1.0 - exp(-over / (1.0 - K)));
   col = mix(rolled, col, uTheme); // the light page is paper, not light: leave it bright
@@ -208,7 +217,7 @@ vec3 finish(vec3 col) {
   vec2 v = (gl_FragCoord.xy / uRes - 0.5) * vec2(uRes.x / uRes.y, 1.0);
   float vig = smoothstep(0.35, 1.1, length(v));
   col *= 1.0 - vig * mix(0.32, 0.07, uTheme);
-  col += (hash12(gl_FragCoord.xy + fract(uTime) * 91.7) - 0.5) * 0.02;
+  col += (hash12(gl_FragCoord.xy + fract(uTime) * 91.7) - 0.5) * 0.012;
   return clamp(col, 0.0, 1.0);
 }
 // sparks + shockwave rim light, then the tone finish
@@ -253,7 +262,7 @@ vec3 ${fn}(vec2 p, vec2 sp, vec2 c, vec2 rad, float spread, float depthK, vec4 b
   vec2 oR = vec2(tR.x, -tR.y) / max(-tR.z, 0.3) * thick;
   vec2 oG = vec2(tG.x, -tG.y) / max(-tG.z, 0.3) * thick;
   vec2 oB = vec2(tB.x, -tB.y) / max(-tB.z, 0.3) * thick;
-  float frost = 0.04 + 0.35 * pow(x, 5.0);
+  float frost = 0.015 + 0.3 * pow(x, 5.0);
   vec3 g = vec3(${scene}(p + oR, sp + oR * uScale, frost).r,
                 ${scene}(p + oG, sp + oG * uScale, frost).g,
                 ${scene}(p + oB, sp + oB * uScale, frost).b);
@@ -299,7 +308,7 @@ export const thickGlass = (fn, scene) => /* glsl */ `
 vec3 ${fn}(vec2 p, vec2 sp, vec2 n, float depth, vec2 c, vec2 hs, float bevW, float bendK, float caK, float scatter, vec3 light) {
   float bevel = pow(1.0 - clamp(depth / bevW, 0.0, 1.0), 2.2);
   vec2 b = -n * bevel * bendK;
-  float frost = 0.02 + 0.9 * bevel;
+  float frost = 0.015 + 0.5 * bevel; // the rim bends the view but keeps it legible: clear glass, not ground glass
   float cover, cr, cb;
   vec2 bR = b * (1.0 - caK * 3.0), bB = b * (1.0 + caK * 3.0);
   vec3 g;

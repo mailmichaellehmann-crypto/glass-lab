@@ -90,7 +90,7 @@ vec3 bloomGlass(vec2 p, vec2 sp, float sd, int idx) {
   vec2 oR = vec2(tR.x, -tR.y) / max(-tR.z, 0.3) * thick;
   vec2 oG = vec2(tG.x, -tG.y) / max(-tG.z, 0.3) * thick;
   vec2 oB = vec2(tB.x, -tB.y) / max(-tB.z, 0.3) * thick;
-  float frost = 0.04 + 0.3 * pow(1.0 - u, 5.0);
+  float frost = 0.015 + 0.26 * pow(1.0 - u, 5.0);
   vec3 kc = vec3(scene(p + oR, sp + oR * uScale, frost).r, scene(p + oG, sp + oG * uScale, frost).g, scene(p + oB, sp + oB * uScale, frost).b);
   kc = mix(kc, kc * 0.86 + vec3(0.1), 1.0 - uTheme);
   // light inside: the drop carries the current colour, each bubble its own, brighter when hot

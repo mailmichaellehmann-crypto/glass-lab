@@ -9,7 +9,7 @@ import { reducedMotion } from './kit.js';
 
 const BEAD = 38, RENDER = 160; // miniatures render at 160px and are scaled into the 38px bead
 // Stills are cached across visits. Bump when a control's look changes so the cache is retaken.
-const STILLS_VERSION = 'v36';
+const STILLS_VERSION = 'v37';
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 export function createShelf() {
@@ -31,7 +31,7 @@ export function createShelf() {
     b.style.setProperty('--live-scale', BEAD / RENDER);
     b.setAttribute('aria-label', `${exp.name}: ${exp.line}`);
     // two stills of the real control, one per theme, cross-faded live with the toggle's theme
-    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const dpr = Math.min(devicePixelRatio || 1, 3);
     const mk = cls => { const c = document.createElement('canvas'); c.className = cls; c.width = c.height = BEAD * dpr; b.appendChild(c); return c; };
     const cvDark = mk('still-dark'), cvLight = mk('still-light');
     li.appendChild(b);
@@ -82,7 +82,7 @@ export function createShelf() {
 
   // ---- stills: one offscreen render per control; dark and light are taken from the very same
   // frame (so cross-fading them never ghosts), then cached so later visits need no rendering
-  const dpr = Math.min(devicePixelRatio || 1, 2);
+  const dpr = Math.min(devicePixelRatio || 1, 3);
   const cacheKey = id => `glass-lab:still:${STILLS_VERSION}:${id}:${dpr}`;
   const drawURL = (ctx, url) => new Promise(res => {
     const img = new Image();

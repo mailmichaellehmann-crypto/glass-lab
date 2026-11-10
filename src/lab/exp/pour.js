@@ -103,7 +103,7 @@ void main() {
     float bevel = pow(1.0 - clamp(depth / 28.0, 0.0, 1.0), 2.6);
     vec2 rel = p - uK;
     vec2 bend = -n * bevel * 36.0 - rel * 0.1;
-    float frost = 0.06 + 0.72 * bevel;
+    float frost = 0.02 + 0.42 * bevel;
     vec3 g = scene(p + bend, sp + bend * uScale, frost, n * bevel * 3.2 + rel * 0.006, cover);
     float sq = max(stripD(p), 0.0);
     float scatter = ((exp(-sq / 24.0) * 0.8 + exp(-sq / 64.0) * 0.2) + exp(-max(sdLiquid(p), 0.0) / 30.0) * 0.5) * uEnergy;

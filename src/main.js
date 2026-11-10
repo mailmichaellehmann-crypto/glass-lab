@@ -46,6 +46,7 @@ const KNOB_R = 56;
 const PITCH = 5.6, PSIZE = 4.5;
 const WALL_INSET = 6.5;
 
+let maxDpr = 3, perfN = 0, perfSum = 0; // full device resolution; drops to 2x once if the device cannot hold its frame rate
 let dpr = 1, vw = 0, vh = 0, cx = 0, cy = 0, leftX = 0, rightX = 0, S = 1;
 const box = { x: 0, y: 0, w: 280, h: 280 }; // icon raster area, follows the knob
 const bounds = { x0: 0, x1: 0, y0: 0, y1: 0 };
@@ -160,7 +161,7 @@ const sparkBuf = new Float32Array(MAX_SPARKS * 4);
 
 // ------------------------------------------------------------------ resize
 function resize() {
-  dpr = Math.min(window.devicePixelRatio || 1, 2);
+  dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
   vw = window.innerWidth; vh = window.innerHeight;
   canvas.width = Math.round(vw * dpr); canvas.height = Math.round(vh * dpr);
   // leave room under the toggle for the lab shelf
@@ -411,6 +412,7 @@ let lastLight = null;
 function frame(nowMs) {
   const dt = Math.max(1 / 240, Math.min(1 / 30, (nowMs - lastT) / 1000)); lastT = nowMs;
   const time = nowMs / 1000;
+  if (dpr > 2 && perfN < 100) { perfN++; if (perfN > 40) perfSum += dt; if (perfN === 100 && perfSum / 60 > 0.021) { maxDpr = 2; resize(); } }
   const motion = reduceMotion ? 0.25 : 1;
 
   if (P.sunClock) {
