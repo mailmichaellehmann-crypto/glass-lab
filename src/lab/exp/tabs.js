@@ -74,7 +74,7 @@ void main() {
     float depth = max(-sk, 0.0);
     float bevel = pow(1.0 - clamp(depth / 22.0, 0.0, 1.0), 2.4);
     vec2 rel = p - lensC();
-    vec2 bend = -n * bevel * 24.0 - rel * 0.16; // a strong loupe: the word swells under it
+    vec2 bend = -n * bevel * 24.0; // flat face over the word (1:1), all the bending lives in the rim
     float frost = 0.05 + 0.7 * bevel;
     vec3 g = railAt(p + bend, sp + bend * uScale, frost, n * bevel * 3.0 + rel * 0.01, cover);
     float sq = max(stripD(p), 0.0);
@@ -92,6 +92,9 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const TABS = thumb ? TABS_ALL.slice(0, 2) : TABS_ALL;
   const C = !thumb && compact();
   const GAP = C ? 88 : 136, LENS = C ? [46, 32] : [58, 34];
+  const BIG = C ? 3.6 : 4.4, SMALL = C ? 3.0 : 3.5;    // chosen / resting pixel pitch
+  // the pill hugs the chosen word: half its width plus a clear margin so the rim never bends a letter
+  const fitW = i => Math.max(LENS[1] + 6, ((TABS[i].label.length * 4 - 1) * BIG) / 2 + (C ? 19 : 21));
   const RAIL = [(TABS.length - 1) * GAP / 2 + (C ? 52 : 68), 50];
   const slotX = i => (i - (TABS.length - 1) / 2) * GAP;
   const st = glassStage(root, { frag: FRAG, box: [RAIL[0] * 2 + (C ? 24 : 100), RAIL[1] * 2 + 100], thumb });
@@ -99,8 +102,9 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const labels = TABS.map((t, i) => { const m = new PixelMatrix({ size: 3.2, swirl: 5, shyR: 15, shyF: 6 }); m.ox = slotX(i); return m; });
   const cols = TABS.map(t => hexRgb(t.color));
   let sel = 1, head = slotX(1), headV = 0, tail = slotX(1), tailV = 0, drag = null, press = 0, lastSlot = 1;
-  const layout = () => labels.forEach((m, i) => m.set(textCells(TABS[i].label, i === sel ? 4.4 : 3.5), {}));
-  labels.forEach((m, i) => m.set(textCells(TABS[i].label, i === sel ? 4.4 : 3.5), { instant: true }));
+  const layout = () => labels.forEach((m, i) => m.set(textCells(TABS[i].label, i === sel ? BIG : SMALL), {}));
+  labels.forEach((m, i) => m.set(textCells(TABS[i].label, i === sel ? BIG : SMALL), { instant: true }));
+  let lensW = fitW(sel), lensWV = 0;
 
   const jelly = new Spring(340, 9);   // + = wider & flatter
   let armed = false, lift = 0, prevHead = head;
@@ -119,7 +123,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       if (!overRail(d)) return;
       st.sfx._ensure();
       const lx = local(d);
-      if (Math.abs(lx - (head + tail) / 2) < LENS[0]) drag = { off: head - lx, moved: 0, x0: lx };
+      if (Math.abs(lx - (head + tail) / 2) < lensW) drag = { off: head - lx, moved: 0, x0: lx };
       else choose(Math.round(lx / GAP + (TABS.length - 1) / 2));
     },
     move: (p, e, d) => {
@@ -168,8 +172,8 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       const s = Math.min(1, Math.abs(headV) / 1600);
       jelly.kick(3 + 9 * s);
       if (s > 0.15) {
-        st.burst(head - LENS[0] * 0.6, LENS[1] + 6, Math.round(3 + 7 * s), 0.4 + 0.6 * s, Math.PI * 0.75, 0.5);
-        st.burst(head + LENS[0] * 0.6, LENS[1] + 6, Math.round(3 + 7 * s), 0.4 + 0.6 * s, Math.PI * 0.25, 0.5);
+        st.burst(head - lensW * 0.6, LENS[1] + 6, Math.round(3 + 7 * s), 0.4 + 0.6 * s, Math.PI * 0.75, 0.5);
+        st.burst(head + lensW * 0.6, LENS[1] + 6, Math.round(3 + 7 * s), 0.4 + 0.6 * s, Math.PI * 0.25, 0.5);
       }
       if (s > 0.5) st.shock(head, 0);
       st.glint(); st.pulse(1);
@@ -178,6 +182,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     }
     prevHead = head;
     const jx = jelly.step(dt) * 0.03;
+    { const k = 260, c = 2 * Math.sqrt(k) * 0.75; lensWV += (-k * (lensW - fitW(sel)) - c * lensWV) * dt; lensW += lensWV * dt; }
 
     // crossing a slot while dragging: a soft detent tick
     const slotNow = clamp(Math.round(head / GAP + (TABS.length - 1) / 2), 0, TABS.length - 1);
@@ -187,8 +192,8 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     const sep = Math.abs(head - tail);
     const thin = 1 - Math.min(0.32, sep / 260);
     const grow = 1 + lift * 0.025;
-    const hh = [LENS[0] * (1 - press * 0.04) * (1 + jx) * grow, LENS[1] * thin * (1 - press * 0.05) * (1 - jx * 1.4) * grow];
-    const th = [LENS[0] * 0.8 * (1 + jx), LENS[1] * thin * 0.85 * (1 - jx * 1.4)];
+    const hh = [lensW * (1 - press * 0.04) * (1 + jx) * grow, LENS[1] * thin * (1 - press * 0.05) * (1 - jx * 1.4) * grow];
+    const th = [lensW * 0.8 * (1 + jx), LENS[1] * thin * 0.85 * (1 - jx * 1.4)];
     const neck = LENS[1] * Math.max(0.16, 0.62 - sep / 300);
 
     // colour follows the lens position

@@ -9,7 +9,7 @@ import { reducedMotion } from './kit.js';
 
 const BEAD = 38, RENDER = 160; // miniatures render at 160px and are scaled into the 38px bead
 // Stills are cached across visits. Bump when a control's look changes so the cache is retaken.
-const STILLS_VERSION = 'v34';
+const STILLS_VERSION = 'v35';
 const wait = ms => new Promise(r => setTimeout(r, ms));
 
 export function createShelf() {
