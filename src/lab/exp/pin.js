@@ -59,14 +59,15 @@ float perimS(vec2 q, vec2 hs, float r, out float L) {
     d = vec2(ex ? sign(q.x) : 0.0, ey ? sign(q.y) : 0.0);
   }
   float a = atan(d.y, d.x);                     // design space is y-down: the top is -pi/2
+  // the quadrant comes from the outward direction d (a capsule has no straight sides, so cq alone can't tell)
   if (ex && ey) {
-    if (cq.x > 0.0 && cq.y < 0.0) return O1 + r * (a + HP);
-    if (cq.x > 0.0) return O3 + r * a;
-    if (cq.y > 0.0) return O5 + r * (a - HP);
-    return O7 + r * (a + 2.0 * HP);
+    if (d.x > 0.0 && d.y < 0.0) return O1 + r * (a + HP);
+    if (d.x > 0.0) return O3 + r * a;
+    if (d.y > 0.0) return O5 + r * (a - HP);
+    return O7 + r * (a < 0.0 ? a + 2.0 * HP : a - 2.0 * HP);
   }
-  if (ey) return cq.y < 0.0 ? (cq.x >= 0.0 ? cq.x : L + cq.x) : O4 + (b.x - cq.x);
-  return cq.x > 0.0 ? O2 + (cq.y + b.y) : O6 + (b.y - cq.y);
+  if (ey) return d.y < 0.0 ? (cq.x >= 0.0 ? cq.x : L + cq.x) : O4 + (b.x - cq.x);
+  return d.x > 0.0 ? O2 + (cq.y + b.y) : O6 + (b.y - cq.y);
 }
 // the toggle's filament, 6.5px outside the box, as a strip of length 2 * uHalfLen around uHead
 float caret(vec2 p) {

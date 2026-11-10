@@ -32,13 +32,13 @@ export const PREVIEWS = {
   },
   beads(c, t, s) {
     base(c, s);
-    c.strokeStyle = 'rgba(255,154,213,0.7)'; c.lineWidth = s * 0.012; c.beginPath(); c.moveTo(s * 0.32, s * 0.12); c.lineTo(s * 0.32, s * 0.88); c.stroke();
-    [[0.28, 0], [0.45, 0], [0.74, 1]].forEach(([y, d]) => {
-      c.fillStyle = d ? 'rgba(61,255,168,0.5)' : 'rgba(255,255,255,0.14)'; c.beginPath(); c.arc(s * 0.32, s * y, s * 0.07, 0, TAU); c.fill();
-      c.strokeStyle = 'rgba(255,255,255,0.5)'; c.stroke();
-      c.fillStyle = d ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.6)'; c.fillRect(s * 0.44, s * y - s * 0.012, s * 0.34, s * 0.024);
+    c.strokeStyle = 'rgba(255,154,213,0.7)'; c.lineWidth = s * 0.012; c.beginPath(); c.moveTo(s * 0.08, s / 2); c.lineTo(s * 0.92, s / 2); c.stroke();
+    [[0.28, 0], [0.5, 0], [0.74, 1]].forEach(([x, d]) => {
+      pill(c, s * x, s / 2, s * 0.18, s * 0.12);
+      c.fillStyle = d ? 'rgba(61,255,168,0.35)' : 'rgba(255,255,255,0.12)'; c.fill(); c.strokeStyle = 'rgba(255,255,255,0.5)'; c.stroke();
     });
   },
+
 
   copy(c, t, s) {
     base(c, s);

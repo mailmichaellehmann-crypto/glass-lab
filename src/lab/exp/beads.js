@@ -1,56 +1,96 @@
-// BEADS — a task list strung like an abacus: every task is a glass bead on a thread of light, seen from
-// above. Type a task and press Enter: its bead drops down the thread to its place and the thread twangs.
-// Tap a task to get it done: its bead fills with light, a pixel check blooms in it, it slides down into
-// the stack of done things and a filament strikes its text through. Drag beads along the thread to
-// reorder; pull one off sideways and the thread stretches with it until it lets go, then it bursts. The
-// toggle's filament circles the next open task; when everything is done a chain of light runs up the
-// thread. Beads are real glass: round domes with per-channel refraction, like the lenses in Bridge.
+// BEADS — a task list: every task is a word in a glass bead on a string of light. Seen from above.
+// Type a task and press Enter: the glass grows around the pixel letters, the bead drops onto the string
+// and the string twangs. Tap a bead to get it done: it fills with green light, a filament strikes the
+// word through and it slides to the done end of the string, past the others. The toggle's filament
+// circles the next open task; when everything is done a chain of light runs along the string. Drag
+// beads to reorder; pull one off the string and it stretches until it lets go, then the task bursts.
+// A task that's already there flies to its twin and melts into it. Backspace in an empty field pops
+// the last open task.
 
-import { glassStage, PixelMatrix, Spring, textCells, bitmapCells, hasGlyph, hexRgb, mix3 } from '../glass/engine.js';
-import { domeLens } from '../glass/lib.glsl.js';
+import { glassStage, PixelMatrix, Spring, textCells, hasGlyph, hexRgb, mix3 } from '../glass/engine.js';
 import { clamp } from '../kit.js';
 
-const NB = 6, NS = 40, MAXC = 16;
-const OPEN = hexRgb('#ff9ad5'), DONE = hexRgb('#3dffa8');
-const CHECK = ['.......##', '......##.', '.##..##..', '..####...', '...##....'];
-const PITCH = 3.0;
+const NB = 6, NS = 48, MAXC = 10;
+const HUES = ['#ff9ad5', '#7fe0ff', '#ffd27f', '#9b8cff', '#ff8a5c', '#c8a2ff'].map(hexRgb);
+const DONE = hexRgb('#3dffa8');
+const PITCH = 2.7;
 const textW = s => (s.length * 4 - 1) * PITCH;
 
 const FRAG = /* glsl */ `
 #define NB ${NB}
 #define NS ${NS}
-uniform vec4  uBead[NB];       // x, y (abs), radius, done (0..1)
-uniform float uBeadG[NB];      // flash
-uniform vec4  uStrike[NB];     // x0, y (abs), length, alpha
+uniform vec4  uBead[NB];       // x, y (abs), half width, half height
+uniform vec3  uBeadC[NB];      // colour
+uniform float uBeadG[NB];      // glow (landing, merging, done flash)
+uniform float uBeadD[NB];      // done (0..1)
 uniform int   uBeadN;
-uniform float uStr[NS];        // sideways displacement of the thread, sampled along it
-uniform vec3  uStrA;           // y0, y1 (abs), x (abs)
+uniform float uStr[NS];        // string displacement samples
+uniform vec3  uStrA;           // string x0, x1 (abs), y (abs)
 uniform vec2  uFieldC, uFieldH;
-uniform float uFocus, uShowField, uEnergy, uTh, uFilOn, uChain;
-uniform vec3  uFil;            // filament: centre (abs) and radius
-uniform vec3  uL, uLD;         // open light, done light
+uniform float uFocus, uShowField, uEnergy, uChain;
+uniform vec3  uL, uLD;
+uniform vec4  uFilB;           // the next open bead: x, y (abs), half width, half height
+uniform float uHead, uHalfLen, uFilOn;
 
-float strDisp(float y) {
-  float t = clamp((y - uStrA.x) / (uStrA.y - uStrA.x), 0.0, 1.0) * float(NS - 1);
+float strDisp(float x) {
+  float t = clamp((x - uStrA.x) / (uStrA.y - uStrA.x), 0.0, 1.0) * float(NS - 1);
   int i = int(floor(t)); int j = min(i + 1, NS - 1);
   return mix(uStr[i], uStr[j], fract(t));
 }
-float sdThread(vec2 q) {
-  float y = clamp(q.y, uStrA.x, uStrA.y);
-  return length(vec2(q.x - (uStrA.z + strDisp(y)), q.y - y));
+float sdString(vec2 q) {
+  float x = clamp(q.x, uStrA.x, uStrA.y);
+  return length(vec2(q.x - x, q.y - (uStrA.z + strDisp(x))));
 }
-float sdBeads(vec2 p, out int idx) {
-  float d = 1e5; idx = -1;
+float sdBeadsI(vec2 p, out int idx) {
+  // the two glass pins the string is tied to belong to the same glass family
+  float d = min(length(p - vec2(uStrA.x, uStrA.z)) - 9.0, length(p - vec2(uStrA.y, uStrA.z)) - 9.0);
+  idx = -1;
   for (int i = 0; i < NB; i++) {
     if (i >= uBeadN) break;
     vec4 b = uBead[i];
-    if (b.z < 0.5) continue;
-    float e = length(p - b.xy) - b.z;
+    if (b.w < 0.5) continue;
+    float e = sdRoundBox(p - b.xy, b.zw, b.w);
     if (e < d) { d = e; idx = i; }
   }
   return d;
 }
-float fil(vec2 p) { return filament(p, uFil.xy, length(p - uFil.xy) - uFil.z, uTh, 0.55); }
+float sdBeads(vec2 p) { int k; return sdBeadsI(p, k); }
+
+// arc-length position around a rounded box, so the filament runs at an even speed along the capsule
+float perimS(vec2 q, vec2 hs, float r, out float L) {
+  vec2 b = hs - r;
+  const float HP = 1.5707963;
+  float O1 = b.x, O2 = O1 + HP * r, O3 = O2 + 2.0 * b.y, O4 = O3 + HP * r;
+  float O5 = O4 + 2.0 * b.x, O6 = O5 + HP * r, O7 = O6 + 2.0 * b.y, O8 = O7 + HP * r;
+  L = O8 + b.x;
+  vec2 cq = clamp(q, -b, b);
+  vec2 d = q - cq;
+  bool ex = abs(cq.x) >= b.x - 1e-3, ey = abs(cq.y) >= b.y - 1e-3;
+  if (dot(d, d) < 1e-6) {
+    if (b.y - abs(q.y) < b.x - abs(q.x)) { ey = true; ex = false; cq.y = sign(q.y) * b.y; }
+    else { ex = true; ey = false; cq.x = sign(q.x) * b.x; }
+    d = vec2(ex ? sign(q.x) : 0.0, ey ? sign(q.y) : 0.0);
+  }
+  float a = atan(d.y, d.x);
+  // the quadrant comes from the outward direction d (a capsule has no straight sides, so cq alone can't tell)
+  if (ex && ey) {
+    if (d.x > 0.0 && d.y < 0.0) return O1 + r * (a + HP);
+    if (d.x > 0.0) return O3 + r * a;
+    if (d.y > 0.0) return O5 + r * (a - HP);
+    return O7 + r * (a < 0.0 ? a + 2.0 * HP : a - 2.0 * HP);
+  }
+  if (ey) return d.y < 0.0 ? (cq.x >= 0.0 ? cq.x : L + cq.x) : O4 + (b.x - cq.x);
+  return d.x > 0.0 ? O2 + (cq.y + b.y) : O6 + (b.y - cq.y);
+}
+float fil(vec2 p) {
+  vec2 q = p - uFilB.xy;
+  float sd = sdRoundBox(q, uFilB.zw, uFilB.w);
+  float L;
+  float s = perimS(q, uFilB.zw, uFilB.w, L);
+  float ds = abs(s - uHead * L); ds = min(ds, L - ds);
+  float hl = max(uHalfLen, 0.5);
+  return length(vec2(sd - 6.5, max(ds - hl, 0.0))) - (1.8 - 0.9 * smoothstep(0.0, hl, ds));
+}
 
 vec3 scene(vec2 q, vec2 sp, float frost) {
   vec3 col = pageBg(sp);
@@ -59,31 +99,38 @@ vec3 scene(vec2 q, vec2 sp, float frost) {
     col = shadowed(col, sdRoundBox(q - uFieldC - vec2(0.0, 12.0), uFieldH, uFieldH.y), sdRoundBox(q - uFieldC - vec2(0.0, 1.5), uFieldH, uFieldH.y), 0.0);
     if (sdF < 2.0) {
       vec3 tc = tray(col, sdF, sdRoundBox(q - uFieldC - vec2(0.0, 6.0), uFieldH, uFieldH.y), q, uFieldC, uFieldH);
+      // focused: a thread of light runs along the lower inner lip
       tc = emitC(tc, uL, exp(-abs(sdF + 1.6) / 1.5) * smoothstep(-uFieldH.y * 0.3, uFieldH.y, q.y - uFieldC.y) * 0.5 * uFocus);
       col = mix(tc, col, smoothstep(-0.6, 0.6, sdF));
     }
   }
-  // the two glass pins the thread hangs from
-  float pin = min(length(q - vec2(uStrA.z, uStrA.x - 6.0)), length(q - vec2(uStrA.z, uStrA.y + 6.0))) - 6.0;
-  col *= 1.0 - (1.0 - smoothstep(-3.0, 8.0, pin - 3.0)) * mix(0.4, 0.15, uTheme);
-  col = mix(col, mix(vec3(0.62), vec3(0.98), uTheme), (1.0 - smoothstep(-0.7, 0.7, pin)) * 0.5);
   // the beads' shadows
-  int k;
-  float bs = sdBeads(q - vec2(0.0, 8.0), k);
-  col *= 1.0 - (1.0 - smoothstep(-6.0, 16.0, bs)) * mix(0.5, 0.18, uTheme);
-  // the thread of light; when everything is done a chain of light runs up it in the done colour
-  float ds = sdThread(q);
-  float front = uStrA.y - (uStrA.y - uStrA.x) * uChain;
-  vec3 tl = mix(uL, uLD, uChain > 0.0 ? smoothstep(front - 10.0, front + 10.0, q.y) : 0.0);
-  col = emitC(col, tl, (smoothstep(1.3, 0.2, ds) * 1.1 + exp(-ds / 5.0) * 0.4 + exp(-ds / 22.0) * 0.12) * uEnergy);
-  // strike-throughs: a filament of light across each done task
+  float bs = sdBeads(q - vec2(0.0, 9.0));
+  col *= 1.0 - (1.0 - smoothstep(-6.0, 18.0, bs)) * mix(0.5, 0.18, uTheme);
+  // the string of light: threaded through the beads, it fades inside them so the words stay readable.
+  // When everything is done a chain of light runs along it in the done colour.
+  float ds = sdString(q);
+  float inBead = 1.0 - smoothstep(-5.0, 2.0, sdBeads(q));
+  float front = mix(uStrA.x - 20.0, uStrA.y + 20.0, uChain);
+  vec3 sl = mix(uL, uLD, uChain > 0.0 ? smoothstep(front + 12.0, front - 12.0, q.x) : 0.0);
+  col = emitC(col, sl, (smoothstep(1.4, 0.2, ds) * 1.2 + exp(-ds / 5.0) * 0.4 + exp(-ds / 22.0) * 0.12) * uEnergy * (1.0 - 0.88 * inBead));
   for (int i = 0; i < NB; i++) {
     if (i >= uBeadN) break;
-    vec4 s = uStrike[i];
-    if (s.w < 0.001) continue;
-    float sd = length(vec2(max(abs(q.x - (s.x + s.z * 0.5)) - s.z * 0.5, 0.0), q.y - s.y)) - 1.0;
-    col = emitC(col, uLD, (exp(-max(sd, 0.0) / 5.0) * 0.5 + exp(-max(sd, 0.0) / 20.0) * 0.15) * s.w * uEnergy);
-    col = mix(col, mix(uLD, vec3(1.0), 0.6), (1.0 - smoothstep(-0.6, 0.6, sd)) * s.w);
+    vec4 b = uBead[i];
+    if (b.w < 0.5) continue;
+    vec3 bc = mix(uBeadC[i], uLD, uBeadD[i]);
+    // each bead lights the page around it a little in its colour
+    float e = max(sdRoundBox(q - b.xy, b.zw, b.w), 0.0);
+    col = emitC(col, bc, exp(-e / 18.0) * (0.05 + 0.35 * uBeadG[i] + 0.1 * uBeadD[i]) * uEnergy);
+    // a done task: a filament strikes its word through, inside the glass
+    float dd = uBeadD[i];
+    if (dd > 0.01) {
+      float len = (b.z - b.w * 0.55) * dd;
+      float x0 = b.x - (b.z - b.w * 0.55);
+      float sd = length(vec2(max(abs(q.x - (x0 + len)) - len, 0.0), q.y - b.y)) - 0.9;
+      col = emitC(col, uLD, (exp(-max(sd, 0.0) / 3.0) * 0.25) * dd * uEnergy);
+      col = mix(col, mix(uLD, vec3(1.0), 0.5), (1.0 - smoothstep(-0.5, 0.5, sd + 0.3)) * dd * 0.85);
+    }
   }
   float f = fil(q);
   col = emitC(col, uL, filamentSpill(f) * 0.5 * uFilOn * uEnergy);
@@ -91,233 +138,296 @@ vec3 scene(vec2 q, vec2 sp, float frost) {
   return ink(col, q, frost, vec2(0.0), 0.0, uL, cover);
 }
 
-${domeLens('beadDome', 'scene')}
+vec3 beadGlass(vec2 p, vec2 sp, float sd, int idx) {
+  vec2 e = vec2(0.5, 0.0);
+  vec2 n = normalize(vec2(sdBeads(p + e.xy) - sdBeads(p - e.xy), sdBeads(p + e.yx) - sdBeads(p - e.yx)) + 1e-5);
+  float hh = idx >= 0 ? uBead[idx].w : 9.0;
+  float depth = max(-sd, 0.0);
+  float u = clamp(depth / hh, 0.0, 1.0);
+  float hgt = sqrt(max(1.0 - (1.0 - u) * (1.0 - u), 0.0));
+  vec3 n3 = normalize(vec3(n.x * (1.0 - u), -n.y * (1.0 - u), hgt + 0.02));
+  vec3 V = vec3(0.0, 0.0, -1.0);
+  // thick glass: the word is magnified and fringes at the edges, like the lenses in Bridge
+  float thick = 4.0 + hh * 0.85 * hgt;
+  // no refraction in the outermost rim: there it would focus one bright spot nearby into a stray dot
+  thick *= smoothstep(0.0, 0.35, u);
+  vec3 tR = refract(V, n3, 1.0 / 1.42), tG = refract(V, n3, 1.0 / 1.5), tB = refract(V, n3, 1.0 / 1.6);
+  vec2 oR = vec2(tR.x, -tR.y) / max(-tR.z, 0.3) * thick;
+  vec2 oG = vec2(tG.x, -tG.y) / max(-tG.z, 0.3) * thick;
+  vec2 oB = vec2(tB.x, -tB.y) / max(-tB.z, 0.3) * thick;
+  float frost = 0.03 + 0.85 * pow(1.0 - u, 3.0);
+  vec3 kc = vec3(scene(p + oR, sp + oR * uScale, frost).r, scene(p + oG, sp + oG * uScale, frost).g, scene(p + oB, sp + oB * uScale, frost).b);
+  kc = mix(kc, kc * 0.84 + vec3(0.11), 1.0 - uTheme);
+  float dn = idx >= 0 ? uBeadD[idx] : 0.0;
+  vec3 lc = idx >= 0 ? mix(uBeadC[idx], uLD, dn) : uL;
+  float g = idx >= 0 ? uBeadG[idx] : 0.3;
+  // light inside: a tint of the bead's colour, stronger when done; it gathers along the far (lower) rim
+  kc = emitC(kc, lc, (0.12 + 0.6 * g + 0.1 * dn) * (0.35 + 0.65 * (1.0 - u)) * uEnergy);
+  kc = emitC(kc, lc, exp(-depth / 2.0) * (0.22 + 0.5 * g + 0.2 * dn) * uEnergy);
+  if (idx >= 0) {
+    vec4 bb = uBead[idx];
+    float v = (p.y - bb.y) / bb.w;
+    float along = smoothstep(bb.z, bb.z - bb.w * 1.4, abs(p.x - bb.x));
+    kc = emitC(kc, lc, exp(-pow((v - 0.72) / 0.12, 2.0)) * along * (0.25 + 0.4 * dn) * uEnergy);
+    // a capsule shows one long, thin highlight along its length, not a point (a point read like a stray pixel)
+    kc += exp(-pow((v + 0.55) / 0.12, 2.0)) * mix(0.32, 0.45, uTheme) * along;
+    kc += exp(-pow((v + 0.2) / 0.3, 2.0)) * 0.04 * along;
+  }
+  kc = emitC(kc, uL, filamentScatter(fil(p)) * 0.6 * uFilOn * uEnergy);
+  vec3 Rv = reflect(V, n3);
+  float fres = 0.04 + 0.96 * pow(1.0 - n3.z, 5.0);
+  vec3 env = mix(vec3(0.06), vec3(0.6), smoothstep(-0.7, 0.9, Rv.y));
+  env = mix(env, vec3(0.97), uTheme * 0.5);
+  kc = mix(kc, env, clamp(fres, 0.0, 0.7));
+  kc += smoothstep(0.08, 0.0, u) * mix(0.32, 0.42, uTheme);
+  vec3 Ld = normalize(vec3(-0.4, 0.65, 0.62));
+  kc += pow(max(dot(Rv, Ld), 0.0), 14.0) * mix(0.07, 0.11, uTheme) * smoothstep(0.2, 0.6, u);
+  if (uSweep < 1.2) {
+    float s = dot(p - uC, normalize(vec2(1.0, -0.75)));
+    float pos = mix(-280.0, 280.0, clamp(uSweep / 0.8, 0.0, 1.0));
+    kc += exp(-pow((s - pos) / 11.0, 2.0)) * 0.3 * (1.0 - uSweep / 1.2) * hgt;
+  }
+  return kc;
+}
 
 void main() {
   vec2 sp; vec2 p = designPos(sp);
   vec3 col = scene(p, sp, 0.0);
   int idx;
-  float sk = sdBeads(p, idx);
-  if (sk < 2.0 && idx >= 0) {
-    vec4 b = uBead[idx];
-    vec3 lc = mix(uL, uLD, b.w);
-    vec3 kc = beadDome(p, sp, b.xy, vec2(b.z), 0.08, 1.05, vec4(lc, 0.1 + 0.3 * b.w), lc,
-                       0.12 + 0.55 * b.w + uBeadG[idx] * 0.9 + filamentScatter(fil(p)) * 0.7 * uFilOn);
-    col = mix(kc, col, smoothstep(-0.7, 0.7, sk));
-  }
-  // fades as a whole (drawFilament draws its body at any energy)
+  float sk = sdBeadsI(p, idx);
+  if (sk < 2.0) col = mix(beadGlass(p, sp, sk, idx), col, smoothstep(-0.7, 0.7, sk));
   if (uFilOn > 0.01) col = mix(col, drawFilament(col, fil(p), uL, uEnergy * (1.0 + uKick * 0.5)), uFilOn);
   fragColor = vec4(finishAt(col, p), 1.0);
 }`;
 
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
-  const R = thumb ? 16 : 20;
-  const SX = thumb ? 0 : -150;                     // thread x
-  const Y0 = thumb ? -66 : -118, Y1 = thumb ? 66 : 172;
-  const STEP = thumb ? 40 : 48;
-  const FY = -168, FIELD = [210, 24];
-  const TX = SX + 38;                                // task text x
-  const st = glassStage(root, { frag: FRAG, box: thumb ? [120, Y1 - Y0 + 50] : [480, Y1 - FY + 80], thumb });
+  const SX = thumb ? 118 : 272;                  // string half length
+  const SY = thumb ? 0 : 46;                      // string y
+  const FY = -66, FIELD = [196, 25];              // field
+  const HH = 20;                                  // bead half height
+  const GAP = 10, GROUP = 26;                     // gap between beads, between open and done
+  const st = glassStage(root, { frag: FRAG, box: thumb ? [SX * 2 + 60, 110] : [SX * 2 + 70, 320], thumb });
   await st.ready;
   const S = st.sfx;
   const buzz = pat => { if (!thumb && navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); };
 
   let clock = 0;
-  // ---------------------------------------------------------------- the thread: plucks that ring and fade
-  const plucks = [];
-  let pull = null;                                   // { y, x } while a bead stretches it sideways
-  const env = y => Math.sin(Math.PI * clamp((y - Y0) / (Y1 - Y0), 0, 1));
-  const disp = (y, t) => {
-    let x = 0;
-    for (const p of plucks) x += p.amp * Math.exp(-(t - p.t) * 2.6) * Math.cos((t - p.t) * 24) * Math.exp(-(((y - p.y) / 80) ** 2));
-    if (pull) x += pull.x * Math.exp(-(((y - pull.y) / 80) ** 2));
-    return x * env(y);
-  };
-  const pluck = (y, amp) => { plucks.push({ y, amp, t: clock }); if (plucks.length > 6) plucks.shift(); };
-
-  // ---------------------------------------------------------------- tasks
-  const tasks = [];
-  const makeTask = (text, done, y) => {
-    const lab = new PixelMatrix({ size: PITCH, swirl: 7, shyR: 12, shyF: 4 });
-    if (!thumb) lab.set(textCells(text, PITCH, 1, { align: 'left' }), { instant: true });
-    lab.ox = TX;
-    const icon = new PixelMatrix({ size: 2.2, swirl: 8, shyR: 6, shyF: 2 });
-    if (done) icon.set(bitmapCells(CHECK, 2.2), { instant: true });
-    return { text, done, y, vy: 0, x: SX, slot: y, strike: done ? 1 : 0, doneMix: done ? 1 : 0, flash: 0, grow: 1, state: 'on', jelly: new Spring(380, 10), lab, icon, attached: true, labY: y };
-  };
-  const live = () => tasks.filter(t => t.state !== 'pop');
-  const layout = () => {
-    const open = live().filter(t => !t.done && t.attached), done = live().filter(t => t.done && t.attached);
-    open.forEach((t, i) => { t.slot = Y0 + 26 + i * STEP; });
-    done.forEach((t, i) => { t.slot = Y1 - 26 - (done.length - 1 - i) * STEP; });
-  };
-  (thumb ? [['', false], ['', false], ['', true]] : [['WATER THE PLANTS', false], ['WRITE TO MOM', false], ['SHIP THE LAB', true]])
-    .forEach(([s, d]) => tasks.push(makeTask(s, d, 0)));
-  layout();
-  tasks.forEach(t => { t.y = t.slot; t.labY = t.slot; });
-
-  const caption = new PixelMatrix({ size: 2.8, swirl: 8, shyR: 12, shyF: 4 });
-  caption.ox = TX; caption.oy = Y1 + 30;
-  let shownCaption = null, chain = 0, allDoneSeen = false, filOn = 1;
   const events = [];
   const later = (dt, fn) => events.push({ t: clock + dt, fn });
 
-  const toggle = t => {
-    t.done = !t.done;
-    t.flash = 1; t.jelly.kick(-5);
-    tasks.splice(tasks.indexOf(t), 1);
-    if (t.done) {
-      t.icon.set(bitmapCells(CHECK, 2.2));
-      st.light = DONE; S.ping(true); buzz(10); st.pulse(0.6);
-      st.burst(t.x, t.y, 8, 0.45);
-      const firstDone = tasks.findIndex(x => x.done && x.state !== 'pop');
-      tasks.splice(firstDone < 0 ? tasks.length : firstDone, 0, t); // a done task joins the top of the done stack
-    } else {
-      t.icon.set([]);
-      S.ping(false); st.pulse(0.3);
-      const firstDone = tasks.findIndex(x => x.done);
-      tasks.splice(firstDone < 0 ? tasks.length : firstDone, 0, t);
-    }
-    pluck(t.y, t.done ? 10 : -8);
-    layout();
+  // ---------------------------------------------------------------- the string: plucks that ring and fade
+  const plucks = [];
+  let pull = null;                                // { x, y } while a bead stretches it
+  const env = x => Math.sin(Math.PI * clamp((x + SX) / (2 * SX), 0, 1));
+  const disp = (x, t) => {
+    let y = 0;
+    for (const p of plucks) y += p.amp * Math.exp(-(t - p.t) * 2.6) * Math.cos((t - p.t) * 26) * Math.exp(-(((x - p.x) / 90) ** 2));
+    if (pull) y += pull.y * Math.exp(-(((x - pull.x) / 85) ** 2));
+    return y * env(x);
+  };
+  const pluck = (x, amp) => { plucks.push({ x, amp, t: clock }); if (plucks.length > 6) plucks.shift(); };
+
+  // ---------------------------------------------------------------- beads (tasks)
+  let hueI = 0;
+  const beads = [];
+  const makeBead = (word, x, y, state, done = false) => {
+    const m = new PixelMatrix({ size: PITCH, swirl: 8, shyR: 12, shyF: 4 });
+    m.set(textCells(word, PITCH), { instant: true });
+    m.ox = x; m.oy = y;
+    return { word, x, y, vx: 0, vy: 0, slot: x, hw: textW(word) / 2 + 17, grow: state === 'on' ? 1 : 0, state, glow: 0, jelly: new Spring(380, 10), m, col: HUES[hueI++ % HUES.length], attached: true, done, doneMix: done ? 1 : 0, hop: 0 };
+  };
+  const live = () => beads.filter(b => b.state !== 'pop' && b.state !== 'merge');
+  const layout = () => {
+    const on = live().filter(b => b.attached);
+    const open = on.filter(b => !b.done), done = on.filter(b => b.done);
+    const total = on.reduce((s, b) => s + b.hw * 2, 0) + GAP * Math.max(0, on.length - 1) + (open.length && done.length ? GROUP - GAP : 0);
+    let x = -total / 2;
+    for (const b of open) { b.slot = x + b.hw; x += b.hw * 2 + GAP; }
+    if (open.length && done.length) x += GROUP - GAP;
+    for (const b of done) { b.slot = x + b.hw; x += b.hw * 2 + GAP; }
+  };
+  const width = () => live().reduce((s, b) => s + b.hw * 2 + GAP, -GAP) + GROUP;
+  let chain = 0, allDoneSeen = false;
+  const checkAllDone = () => {
     const l = live();
-    if (l.length && l.every(x => x.done)) {
-      if (!allDoneSeen) {
-        allDoneSeen = true;
-        later(0.45, () => {
-          if (!live().every(x => x.done)) return;
-          chain = 0.001; st.light = DONE; st.shock(SX, (Y0 + Y1) / 2); st.glint();
-          [0.45, 0.6, 0.75, 0.9].forEach((p, i) => later(i * 0.08, () => S.key(p)));
-          live().forEach((x, i, a) => later(0.08 * (a.length - 1 - i), () => { x.flash = 1.2; x.jelly.kick(-4); }));
-          buzz([10, 40, 10, 40, 20]);
-        });
-      }
+    if (l.length && l.every(b => b.done)) {
+      if (allDoneSeen) return;
+      allDoneSeen = true;
+      later(0.5, () => {
+        if (!live().every(b => b.done)) return;
+        chain = 0.001; st.light = DONE; st.shock(0, SY); st.glint();
+        [0.45, 0.6, 0.75, 0.9].forEach((p, i) => later(i * 0.08, () => S.key(p)));
+        live().forEach((b, i) => later(0.06 + i * 0.09, () => { b.glow = 1.2; b.jelly.kick(-4); pluck(b.x, 6); }));
+        buzz([10, 40, 10, 40, 20]);
+      });
     } else { allDoneSeen = false; chain = 0; }
   };
-  const pop = t => {
-    if (t.state === 'pop') return;
-    t.state = 'pop'; t.lab.set([]); t.icon.set([]);
-    st.light = t.done ? DONE : OPEN;
-    st.burst(t.x, t.y, 16, 0.8);
+  const toggle = b => {
+    b.done = !b.done;
+    b.glow = 1; b.jelly.kick(-5);
+    if (b.done) {
+      b.m.set(textCells(b.word, PITCH, 0.78));
+      st.light = DONE; S.ping(true); buzz(10); st.pulse(0.6);
+      st.burst(b.x, b.y, 8, 0.45);
+      // joins the front of the done group
+      beads.splice(beads.indexOf(b), 1);
+      const firstDone = beads.findIndex(x => x.done);
+      beads.splice(firstDone < 0 ? beads.length : firstDone, 0, b);
+    } else {
+      b.m.set(textCells(b.word, PITCH));
+      S.ping(false); st.pulse(0.3);
+      beads.splice(beads.indexOf(b), 1);
+      const firstDone = beads.findIndex(x => x.done);
+      beads.splice(firstDone < 0 ? beads.length : firstDone, 0, b);
+    }
+    pluck(b.x, b.done ? 10 : -8);
+    layout();
+    checkAllDone();
+  };
+  const pop = b => {
+    if (b.state === 'pop') return;
+    b.state = 'pop'; b.m.set([]);
+    st.light = b.done ? DONE : b.col; st.burst(b.x, b.y, 16, 0.8);
     S.drip(0.95, 0.7); S.tick(0.9, 0.5); buzz(8);
     layout();
+    checkAllDone();
   };
+  (thumb ? [['UI', false], ['FX', false], ['3D', true]] : [['CALL MOM', false], ['MILK', false], ['GYM', true]])
+    .forEach(([w, d]) => beads.push(makeBead(w, 0, SY, 'on', d)));
+  beads.filter(b => b.done).forEach(b => b.m.set(textCells(b.word, PITCH, 0.78), { instant: true }));
+  layout();
+  beads.forEach(b => { b.x = b.slot; });
 
   // ---------------------------------------------------------------- typing
-  let text = '', focused = false, caretT = 0;
+  let text = '', focused = false, caretT = 0, fieldShake = 0;
   const typed = new PixelMatrix({ size: PITCH, swirl: 6, shyR: 10, shyF: 3 });
   const placeholder = new PixelMatrix({ size: PITCH, swirl: 6, shyR: 10, shyF: 3 });
   const fieldLeft = -FIELD[0] + 20;
-  typed.ox = fieldLeft; typed.oy = FY; placeholder.ox = fieldLeft; placeholder.oy = FY;
+  typed.ox = fieldLeft; typed.oy = FY;
+  placeholder.ox = fieldLeft; placeholder.oy = FY;
   if (!thumb) placeholder.set(textCells('NEW TASK', PITCH, 1, { align: 'left' }), { instant: true });
-  const setText = s => { text = s; typed.set(textCells(s, PITCH, 1, { align: 'left' })); caretT = 0; };
+  const caption = new PixelMatrix({ size: 2.8, swirl: 8, shyR: 12, shyF: 4 });
+  caption.oy = SY + 58;
+  let shownCaption = null;
+  const setText = t => { text = t; typed.set(textCells(t, PITCH, 1, { align: 'left' })); caretT = 0; };
   const commit = () => {
-    const s = text.trim();
-    if (!s) { S.tick(0.2, 0.3); return; }
-    if (live().length >= NB) { S.tick(0.15, 0.8); later(0.1, () => S.tick(0.12, 0.8)); return; } // the thread is full
-    const t = makeTask(s, false, Y0 - 10);
-    t.vy = 60; t.labY = Y0 - 10;
-    tasks.unshift(t); // it drops onto the top of the thread and nudges the others down (beads can't pass each other)
-    t.lab.set([], { instant: true });
-    later(0.2, () => t.lab.set(textCells(s, PITCH, 1, { align: 'left' })));
+    const w = text.trim();
+    if (!w) { S.tick(0.2, 0.3); return; }
+    const x = fieldLeft + textW(w) / 2, y = FY;
+    const twin = live().find(b => b.word === w);
+    // the string is full: make room by letting done tasks go; never drop an open one
+    const need = textW(w) + 34 + GAP;
+    while (!twin && (live().length >= NB || width() + need > SX * 2 - 30)) {
+      const old = live().find(x => x.done);
+      if (!old) { fieldShake = 1; S.tick(0.15, 0.8); later(0.1, () => S.tick(0.12, 0.8)); buzz([20, 30, 20]); return; }
+      pop(old);
+    }
+    const b = makeBead(w, x, y, twin ? 'merge' : 'fall');
+    if (twin) { b.col = twin.col; hueI--; b.twin = twin; }
+    // a new task joins the end of the open ones
+    const firstDone = beads.findIndex(x => x.done && x.state !== 'pop');
+    beads.splice(firstDone < 0 ? beads.length : firstDone, 0, b);
     typed.set([], { instant: true });
     text = ''; if (input) input.value = '';
     S.drip(0.55, 0.5); st.pulse(0.3);
     layout();
     allDoneSeen = false; chain = 0;
   };
+  const backspace = () => {
+    if (text) { setText(text.slice(0, -1)); if (input) input.value = text; S.tick(0.3, 0.3); return; }
+    const last = [...beads].reverse().find(b => b.state === 'on' && !b.done);
+    if (last) pop(last);
+  };
+
   let input = null;
   if (!thumb) {
     input = document.createElement('input');
     Object.assign(input, { type: 'text', autocomplete: 'off', spellcheck: false, maxLength: MAXC, ariaLabel: 'New task' });
+    input.setAttribute('autocapitalize', 'characters');
     input.setAttribute('enterkeyhint', 'done');
     input.style.cssText = 'position:absolute;opacity:0;border:0;padding:0;margin:0;background:transparent;color:transparent;caret-color:transparent;font-size:16px;pointer-events:none;z-index:1';
     root.appendChild(input);
     input.addEventListener('input', () => {
       const want = [...input.value.toUpperCase()].filter(c => hasGlyph(c)).join('').replace(/^ +/, '').replace(/ {2,}/g, ' ').slice(0, MAXC);
-      if (want.length > text.length) S.tick(0.5 + want.length * 0.02, 0.3);
+      if (want.length > text.length) S.tick(0.5 + want.length * 0.03, 0.35);
       if (want !== text) setText(want);
       if (input.value !== want) input.value = want;
     });
     input.addEventListener('keydown', e => {
       if (e.key === 'Enter') { e.preventDefault(); S._ensure(); commit(); }
-      else if (e.key === 'Backspace' && !input.value) {
-        e.preventDefault();
-        const last = [...tasks].reverse().find(x => !x.done && x.state !== 'pop');
-        if (last) pop(last);
-      }
+      else if (e.key === 'Backspace' && !input.value) { e.preventDefault(); backspace(); }
     });
     input.addEventListener('focus', () => { focused = true; });
     input.addEventListener('blur', () => { focused = false; });
     setTimeout(() => input?.focus({ preventScroll: true }), 350);
   }
 
-  // ---------------------------------------------------------------- pointer: a row is a button, its bead also drags
+  // ---------------------------------------------------------------- pointer: a tap gets a task done, a drag moves its bead
   const local = d => [d[0] - st.cx, d[1] - st.cy];
-  const taskAt = ([x, y]) => live().find(t => Math.abs(y - t.y) < STEP / 2 && x > t.x - R - 8 && x < (thumb ? t.x + R + 8 : TX + Math.max(textW(t.text), 40) + 10));
-  const onBead = (t, [x, y]) => Math.hypot(x - t.x, y - t.y) < R + 8;
+  const beadAt = ([x, y]) => beads.find(b => b.state === 'on' && Math.abs(x - b.x) < b.hw + 4 && Math.abs(y - b.y) < HH + 6);
   let drag = null;
   st.bindPointer({
     down: (p, e, d) => {
       const q = local(d);
       S._ensure();
-      const t = taskAt(q);
-      if (t) { drag = { t, y0: q[1], x0: q[0], off: q[1] - t.y, moved: 0, onBead: onBead(t, q) }; t.jelly.kick(-2); return; }
+      const b = beadAt(q);
+      if (b) { drag = { b, off: [q[0] - b.x, q[1] - b.y], x0: q[0], y0: q[1], moved: 0 }; b.jelly.kick(-2.5); return; }
       if (input && Math.abs(q[0]) < FIELD[0] && Math.abs(q[1] - FY) < FIELD[1] + 6) input.focus({ preventScroll: true });
     },
     move: (p, e, d) => {
       const q = local(d);
-      const over = taskAt(q);
-      st.canvas.style.cursor = drag && drag.t.state === 'drag' ? 'grabbing' : over ? 'pointer' : input && Math.abs(q[0]) < FIELD[0] && Math.abs(q[1] - FY) < FIELD[1] + 6 ? 'text' : 'default';
+      const over = beadAt(q);
+      st.canvas.style.cursor = drag && drag.b.state === 'drag' ? 'grabbing' : over ? 'pointer' : input && Math.abs(q[0]) < FIELD[0] && Math.abs(q[1] - FY) < FIELD[1] + 6 ? 'text' : 'default';
       if (!drag) return;
-      const t = drag.t;
+      const b = drag.b;
       drag.moved = Math.max(drag.moved, Math.hypot(q[0] - drag.x0, q[1] - drag.y0));
-      if (drag.moved < 6 || !drag.onBead) return;
-      t.state = 'drag';
-      const dx = q[0] - SX;
-      if (t.attached) {
-        // pulled off the thread: it stretches with the bead until it lets go
-        if (Math.abs(dx) > 64) {
-          t.attached = false; pull = null;
-          pluck(t.y, -Math.sign(dx) * 16);
+      if (drag.moved < 6) return;
+      if (b.state !== 'drag') { b.state = 'drag'; S.tick(0.55, 0.4); }
+      b.tx = clamp(q[0] - drag.off[0], -SX + b.hw, SX - b.hw);
+      const dy = q[1] - drag.off[1] - SY;
+      if (b.attached) {
+        // pulled off the string: it stretches with the bead until it lets go
+        if (Math.abs(dy) > 62) {
+          b.attached = false; pull = null;
+          pluck(b.x, -Math.sign(dy) * 16);
           S.tick(0.95, 0.8); S.drip(0.8, 0.4); buzz(10);
           layout();
-        } else pull = { y: t.y, x: dx * 0.85 };
-      } else if (Math.abs(dx) < 26) { t.attached = true; S.tick(0.6, 0.4); }
-      t.ty = t.attached ? clamp(q[1] - drag.off, Y0 + 16, Y1 - 16) : q[1] - drag.off;
-      t.tx = t.attached ? SX + dx * 0.85 : q[0];
-      // reorder within its group (open or done)
-      if (t.attached) {
-        const group = live().filter(x => x.done === t.done && x.attached);
-        const sorted = [...group].sort((a, b) => (a === t ? t.ty : a.slot) - (b === t ? t.ty : b.slot));
+        } else pull = { x: b.x, y: dy * 0.85 };
+      } else if (Math.abs(dy) < 26) { b.attached = true; S.tick(0.6, 0.4); }
+      b.ty = SY + dy;
+      if (!b.attached) b.tx = q[0] - drag.off[0];
+      // reorder within its group (open or done): the dragged bead takes the place it is over
+      if (b.attached) {
+        const group = beads.filter(x => (x.state === 'on' || x === b) && x.done === b.done && x.attached);
+        const sorted = [...group].sort((u, v) => (u === b ? b.tx : u.slot) - (v === b ? b.tx : v.slot));
         if (sorted.some((x, i) => x !== group[i])) {
-          const idx = group.map(x => tasks.indexOf(x)).sort((a, b) => a - b);
-          sorted.forEach((x, i) => { tasks[idx[i]] = x; });
+          const idx = group.map(x => beads.indexOf(x)).sort((u, v) => u - v);
+          sorted.forEach((x, i) => { beads[idx[i]] = x; });
           layout(); S.tick(0.62, 0.35);
         }
       }
     },
     up: () => {
       if (!drag) return;
-      const { t, moved } = drag;
+      const { b, moved } = drag;
       drag = null; pull = null;
-      if (t.state === 'drag') {
-        if (!t.attached) { pop(t); return; }
-        t.state = 'on'; t.vy = 0; t.jelly.kick(2.5); pluck(t.y, (t.x - SX) * 0.6 + 3);
+      if (b.state === 'drag') {
+        if (!b.attached) { pop(b); return; }
+        b.state = 'on'; b.jelly.kick(2.5);
+        pluck(b.x, (b.y - SY) * 0.7 + 3);
         return;
       }
-      if (moved < 6) toggle(t);
+      if (moved < 6) toggle(b);
     },
   });
-  const onClick = () => { if (!drag) input?.focus({ preventScroll: true }); };
+  const onClick = () => input?.focus({ preventScroll: true });
   st.canvas.addEventListener('click', onClick);
 
   // ---------------------------------------------------------------- autopilot (shelf miniature): ticks tasks off, then starts over
-  let demoT = 0, lastNext = null;
+  let demoT = 0, filOn = 1, head = 0, filTarget = null;
   const sU = new Float32Array(NS);
-  const bU = new Float32Array(NB * 4), gU = new Float32Array(NB), sk = new Float32Array(NB * 4);
-
+  const bU = new Float32Array(NB * 4), cU = new Float32Array(NB * 3), gU = new Float32Array(NB), dU = new Float32Array(NB);
   st.run((dt, t) => {
     clock = t;
     for (let k = events.length - 1; k >= 0; k--) if (events[k].t <= clock) { const ev = events[k]; events.splice(k, 1); ev.fn(); }
@@ -325,103 +435,129 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       demoT += dt;
       if (demoT > 1.0) {
         demoT = 0;
-        const open = live().find(x => !x.done);
-        if (open) toggle(open); else live().forEach(x => { if (x.done) toggle(x); });
+        const open = live().find(b => !b.done);
+        if (open) toggle(open); else live().forEach(b => toggle(b));
       }
     }
 
     while (plucks.length && t - plucks[0].t > 3) plucks.shift();
-    for (let i = tasks.length - 1; i >= 0; i--) {
-      const b = tasks[i];
-      b.flash *= Math.exp(-dt * 2.6);
-      b.doneMix += ((b.done ? 1 : 0) - b.doneMix) * Math.min(1, dt * 6);
-      b.strike += ((b.done ? 1 : 0) - b.strike) * Math.min(1, dt * (b.done ? 4 : 8));
-      if (b.state === 'pop') { b.grow -= dt * 6; if (b.grow <= 0) tasks.splice(i, 1); continue; }
-      if (b.state === 'drag') {
-        b.y += ((b.ty ?? b.y) - b.y) * Math.min(1, dt * 20);
-        b.x += ((b.tx ?? b.x) - b.x) * Math.min(1, dt * 20);
-      } else {
-        // it falls and slides along the thread, with a little bounce when it arrives
-        const k = 150, c = 2 * Math.sqrt(k) * 0.45;
-        const before = b.y;
-        b.vy += (-k * (b.y - b.slot) - c * b.vy) * dt; b.y += b.vy * dt;
-        if (Math.sign(before - b.slot) !== Math.sign(b.y - b.slot) && Math.abs(b.vy) > 90) {
-          pluck(b.y, Math.min(14, Math.abs(b.vy) * 0.03)); b.jelly.kick(-3);
-          S.tick(0.45 + Math.random() * 0.2, Math.min(0.6, Math.abs(b.vy) / 600));
-        }
-        // on a long way it hops off the thread to the side and swings round the other beads
-        const away = clamp((Math.abs(b.y - b.slot) - STEP * 0.35) / STEP, 0, 1);
-        b.hop = (b.hop || 0) + ((Math.abs(b.vy) > 40 ? away : 0) - (b.hop || 0)) * Math.min(1, dt * 10);
-        b.x = SX + disp(b.y, t) - b.hop * (R * 1.6);
+    for (let i = beads.length - 1; i >= 0; i--) {
+      const b = beads[i];
+      b.glow *= Math.exp(-dt * 3);
+      b.doneMix += ((b.done ? 1 : 0) - b.doneMix) * Math.min(1, dt * 5);
+      if (b.state === 'pop') {
+        b.grow -= dt * 6;
+        if (b.grow <= 0) beads.splice(i, 1);
+        continue;
       }
-      b.labY += (b.y - b.labY) * Math.min(1, dt * 10);
-      b.lab.oy = b.labY; b.lab.ox = TX;
-      b.lab.step(dt, { ptr: st.local(b.lab), shy: st.ptrOn * (drag ? 0 : 0.5) });
-      b.icon.ox = b.x; b.icon.oy = b.y;
-      b.icon.step(dt, { ptr: null, shy: 0 });
+      b.grow = Math.min(1, b.grow + dt * 4);
+      let tx, ty, k, c;
+      if (b.state === 'drag') { tx = b.tx ?? b.x; ty = b.ty ?? b.y; k = 700; c = 2 * Math.sqrt(k) * 0.8; }
+      else if (b.state === 'merge') { tx = b.twin.x; ty = b.twin.y; k = 160; c = 2 * Math.sqrt(k) * 0.75; }
+      else {
+        // on a long way along the string a bead lifts off it and arcs over the others
+        const away = clamp((Math.abs(b.x - b.slot) - b.hw * 0.6) / 80, 0, 1);
+        b.hop += ((b.state === 'on' ? away : 0) - b.hop) * Math.min(1, dt * 10);
+        tx = b.slot; ty = SY + disp(b.slot, t) - b.hop * HH * 2.4;
+        k = b.state === 'fall' ? 120 : 200; c = 2 * Math.sqrt(k) * (b.state === 'fall' ? 0.42 : 0.68);
+      }
+      if (b.state === 'fall' && b.grow < 1) { tx = b.x; ty = b.y; } // the glass first forms around the word
+      b.vx += (-k * (b.x - tx) - c * b.vx) * dt; b.vy += (-k * (b.y - ty) - c * b.vy) * dt;
+      b.x += b.vx * dt; b.y += b.vy * dt;
+      if (b.state === 'fall' && b.grow >= 1 && b.y > SY - 4 && b.vy > 0) {
+        // lands on the string: it twangs
+        b.state = 'on';
+        pluck(b.x, Math.min(16, b.vy * 0.03 + 5));
+        b.jelly.kick(-4); b.glow = 1;
+        S.tick(0.5 + Math.random() * 0.2, 0.6); S.land(0.25); st.pulse(0.4);
+      }
+      if (b.state === 'merge' && Math.hypot(b.x - b.twin.x, b.y - b.twin.y) < 8) {
+        // melts into its twin
+        b.twin.glow = 1.3; b.twin.jelly.kick(-6);
+        st.light = b.twin.col; S.drip(0.65, 0.7); st.burst(b.twin.x, b.twin.y, 8, 0.4);
+        beads.splice(i, 1);
+        continue;
+      }
+      b.m.ox = b.x; b.m.oy = b.y;
+      b.m.step(dt, { ptr: st.local(b.m), shy: st.ptrOn * (drag ? 0 : 0.5), vel: b.vx * 0.3 });
     }
-    if (pull && drag) pull.y = drag.t.y;
-    if (chain > 0) chain = Math.min(1, chain + dt * 1.6);
-
-    const l = live();
-    const nDone = l.filter(x => x.done).length;
-    const word = thumb ? '' : l.length ? `${nDone} OF ${l.length} DONE` : 'ALL CLEAR';
-    if (word !== shownCaption) { caption.set(word ? textCells(word, 2.8, 1, { align: 'left' }) : []); shownCaption = word; }
-    caption.step(dt, { ptr: st.local(caption), shy: st.ptrOn * 0.5 });
+    if (pull && drag) pull.x = drag.b.x;
+    if (chain > 0) chain = Math.min(1, chain + dt * 1.3);
 
     // the filament circles the next open task
-    const next = l.find(x => !x.done && x.state !== 'drag');
+    const l = live();
+    const next = l.find(b => !b.done && b.state === 'on');
+    if (next) filTarget = next;
     filOn += ((next ? 1 : 0) - filOn) * Math.min(1, dt * 6);
-    if (next) lastNext = next;
-    if (!events.length && chain === 0) st.light = mix3(st.light, next ? OPEN : DONE, Math.min(1, dt * 4));
+    const fb = filTarget || l[0];
+    if (fb) head = (head + dt * (reducedMotion ? 50 : 140) / (4 * (fb.hw + HH) + 2 * Math.PI * HH)) % 1;
+
+    const glowing = l.filter(b => b.glow > 0.05).sort((a, b) => b.glow - a.glow)[0];
+    const L = next ? next.col : DONE;
+    if (!thumb && !events.length && chain === 0) st.light = mix3(st.light, glowing ? (glowing.done ? DONE : glowing.col) : L, Math.min(1, dt * 6));
+
+    const nDone = l.filter(b => b.done).length;
+    const word = thumb ? '' : l.length ? `${nDone} OF ${l.length} DONE` : 'ALL CLEAR';
+    if (word !== shownCaption) { caption.set(word ? textCells(word, 2.8) : []); shownCaption = word; }
+    caption.step(dt, { ptr: st.local(caption), shy: st.ptrOn * 0.5 });
+
     caretT += dt;
+    // a refused task: the field shakes its head
+    fieldShake *= Math.exp(-dt * 5);
+    const shakeX = reducedMotion ? 0 : Math.sin(t * 60) * 7 * fieldShake;
+    typed.ox = fieldLeft + shakeX;
+    // keep the invisible input over the field (focus, IME and the phone keyboard)
+    if (input) Object.assign(input.style, { left: `${st.cx - FIELD[0] * st.S}px`, top: `${st.cy + (FY - FIELD[1]) * st.S}px`, width: `${FIELD[0] * 2 * st.S}px`, height: `${FIELD[1] * 2 * st.S}px` });
     typed.step(dt, { ptr: null, shy: 0 });
     placeholder.step(dt, { ptr: null, shy: 0 });
-    if (input) Object.assign(input.style, { left: `${st.cx - FIELD[0] * st.S}px`, top: `${st.cy + (FY - FIELD[1]) * st.S}px`, width: `${FIELD[0] * 2 * st.S}px`, height: `${FIELD[1] * 2 * st.S}px` });
 
-    bU.fill(0); gU.fill(0); sk.fill(0);
-    const vis = tasks.slice(0, NB);
+    bU.fill(0); cU.fill(0); gU.fill(0); dU.fill(0);
+    const vis = beads.slice(0, NB);
+    let fbU = [0, 0, 1, 1];
     vis.forEach((b, i) => {
-      const j = b.jelly.step(dt) * 0.04;
+      const j = b.jelly.step(dt) * 0.035;
       const g = clamp(b.grow, 0, 1);
-      bU.set([st.cx + b.x, st.cy + b.y, R * g * (1 + j) * (b.state === 'drag' ? 1.08 : 1), b.doneMix], i * 4);
-      gU[i] = b.flash;
-      if (!thumb) sk.set([st.cx + TX - 6, st.cy + b.labY, (textW(b.text) + 12) * b.strike, b.strike > 0.01 && b.state !== 'pop' ? b.strike : 0], i * 4);
+      const e = g * g * (3 - 2 * g);
+      const hw = b.hw * e * (1 + j) + 0.001, hh = HH * e * (1 - j) * (b.state === 'drag' ? 1.06 : 1);
+      bU.set([st.cx + b.x, st.cy + b.y, hw, hh], i * 4);
+      cU.set(b.col, i * 3);
+      gU[i] = b.glow + (b.state === 'drag' ? 0.5 : 0);
+      dU[i] = b.doneMix;
+      if (b === fb) fbU = [st.cx + b.x, st.cy + b.y, hw, hh];
     });
-    for (let i = 0; i < NS; i++) sU[i] = disp(Y0 + ((Y1 - Y0) * i) / (NS - 1), t);
+    for (let i = 0; i < NS; i++) sU[i] = disp(-SX + (2 * SX * i) / (NS - 1), t);
 
     st.drawPixels(ctx => {
-      for (const b of vis) {
-        if (!thumb) b.lab.draw(ctx, 0.92 - 0.5 * b.strike);
-        b.icon.draw(ctx, clamp(b.grow, 0, 1));
-      }
+      for (const b of vis) b.m.draw(ctx, clamp(b.grow, 0, 1) * 0.95);
       caption.draw(ctx, 0.6);
       if (!thumb) {
         typed.draw(ctx, 1);
         if (!text) placeholder.draw(ctx, focused ? 0.28 : 0.4);
+        // the caret blinks after the last letter while the field has focus
         const on = focused && (caretT < 0.5 || Math.cos((caretT - 0.5) * Math.PI * 2) > 0);
-        if (on) { ctx.globalAlpha = 0.9; ctx.fillRect(fieldLeft + (text ? textW(text) + PITCH * 1.2 : 0) - PITCH / 2, FY - PITCH * 2.5, PITCH * 0.7, PITCH * 5); ctx.globalAlpha = 1; }
+        if (on) { ctx.globalAlpha = 0.9; ctx.fillRect(fieldLeft + shakeX + (text ? textW(text) + PITCH * 1.2 : 0) - PITCH / 2, FY - PITCH * 2.5, PITCH * 0.7, PITCH * 5); ctx.globalAlpha = 1; }
       }
     });
     st.render(t, (U, gl) => {
       gl.uniform4fv(U.uBead, bU);
+      gl.uniform3fv(U.uBeadC, cU);
       gl.uniform1fv(U.uBeadG, gU);
-      gl.uniform4fv(U.uStrike, sk);
+      gl.uniform1fv(U.uBeadD, dU);
       gl.uniform1i(U.uBeadN, vis.length);
       gl.uniform1fv(U.uStr, sU);
-      gl.uniform3f(U.uStrA, st.cy + Y0, st.cy + Y1, st.cx + SX);
-      gl.uniform2f(U.uFieldC, st.cx, st.cy + FY);
+      gl.uniform3f(U.uStrA, st.cx - SX, st.cx + SX, st.cy + SY);
+      gl.uniform2f(U.uFieldC, st.cx + shakeX, st.cy + FY);
       gl.uniform2f(U.uFieldH, FIELD[0], FIELD[1]);
       gl.uniform1f(U.uFocus, focused ? 1 : 0);
       gl.uniform1f(U.uShowField, thumb ? 0 : 1);
       gl.uniform1f(U.uEnergy, 0.75 + st.kick * 0.25);
-      gl.uniform1f(U.uTh, t * (reducedMotion ? 0.6 : 2.2));
-      gl.uniform1f(U.uFilOn, filOn);
-      const fn = next || lastNext;
-      gl.uniform3f(U.uFil, st.cx + (fn ? fn.x : SX), st.cy + (fn ? fn.y : Y0), R);
       gl.uniform1f(U.uChain, chain);
-      gl.uniform3f(U.uL, ...OPEN);
+      gl.uniform3f(U.uL, ...(next ? next.col : DONE));
       gl.uniform3f(U.uLD, ...DONE);
+      gl.uniform4f(U.uFilB, ...fbU);
+      gl.uniform1f(U.uHead, head);
+      gl.uniform1f(U.uHalfLen, 26);
+      gl.uniform1f(U.uFilOn, filOn);
     });
   });
 
