@@ -39,23 +39,25 @@ vec3 scene(vec2 q, vec2 sp, float frost) {
   col = shadowed(col, sdRoundBox(q - uC - vec2(0.0, 12.0), hs, hs.y), sdRoundBox(q - uC - vec2(0.0, 1.5), hs, hs.y), 0.0);
   float f = fil(q);
   col = emitC(col, uL, filamentSpill(f) * 0.5 * uEnergy);
-  // the trail of liquid light behind the lens: thicker, brighter and faster with tension
+  // liquid light fills the tray behind the lens, its front tucked under the lens: a level, not a line.
+  // It grows brighter, hotter and flows faster with tension; after the discharge it floods the rest.
   float h;
+  float r = hs.y + 3.0;
+  float front = mix(max(uTrail.y - r + uKR.x * 0.55, uTrail.x), uTrail.y, uFlood);
   float len = max(uTrail.y - uTrail.x, 1.0);
-  // after the discharge the trail swells until the liquid light fills the whole tray
-  float d = sdSeg(q, vec2(uTrail.x, uC.y), vec2(uTrail.y, uC.y), h) - mix(4.5 + 4.5 * uTension, hs.y + 3.0, uFlood);
-  float flow = 0.84 + 0.16 * sin((h * len - uTime * (70.0 + 260.0 * uTension)) / 19.0);
-  // builds with progress; after the discharge it flashes once (the kick) and settles to a calm glow
-  float amp = smoothstep(2.0, 24.0, len) * ((0.18 + 0.85 * uProg) * (1.0 - 0.55 * uDone) + uKick * 0.5 * uDone);
-  vec3 tcol = mix(uL0, uL, h);
+  float d = sdSeg(q, vec2(uTrail.x, uC.y), vec2(front, uC.y), h) - r;
+  float flow = 0.88 + 0.12 * sin((q.x - uC.x - uTime * (60.0 + 240.0 * uTension)) / 22.0);
+  // nothing at rest; builds with progress; after the discharge one flash (the kick), then a calm glow
+  float amp = smoothstep(30.0, 70.0, len) * ((0.16 + 0.8 * uProg) * (1.0 - 0.5 * uDone) + uKick * 0.5 * uDone);
+  vec3 tcol = mix(uL0, uL, clamp((q.x - uTrail.x) / len, 0.0, 1.0));
   float core = 1.0 - smoothstep(-0.8, 0.8, d);
   float glow = exp(-max(d, 0.0) / 8.0) * 0.55 + exp(-max(d, 0.0) / 30.0) * 0.25;
   col = emitC(col, tcol, glow * amp * 0.2 * uEnergy);
   if (sdT < 2.0) {
     vec3 tc = tray(col, sdT, sdRoundBox(q - uC - vec2(0.0, 6.0), hs, hs.y), q, uC, hs);
-    // a full tray glows calmer in the middle and brighter where the liquid meets the rim
-    float fieldShade = mix(1.0, 0.62 + 0.55 * smoothstep(-hs.y * 0.9, -1.0, d), uFlood);
-    tc = emitC(tc, tcol, (core * 1.1 * fieldShade + glow) * mix(flow, 1.0, uFlood * 0.6) * amp * uEnergy);
+    // calmer in the middle, brighter where the liquid meets the rim and at its front (the meniscus)
+    float fieldShade = 0.6 + 0.55 * smoothstep(-hs.y * 0.9, -1.0, d);
+    tc = emitC(tc, tcol, (core * 0.95 * fieldShade + glow * 0.6) * mix(flow, 1.0, uFlood * 0.6) * amp * uEnergy);
     tc = emitC(tc, uL, filamentWash(f) * 0.4 * uEnergy);
     col = mix(tc, col, smoothstep(-0.6, 0.6, sdT));
   }
