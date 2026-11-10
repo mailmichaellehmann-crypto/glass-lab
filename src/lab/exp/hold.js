@@ -102,6 +102,13 @@ void main() {
     float bevel = 1.0 - u;
     // clear glass: what is behind shows through almost untouched, no grey body
     vec3 kc = g * mix(0.97, 1.0, uTheme);
+    // a trace of body, so the empty pill reads as thick glass and not as an outline
+    kc += mix(0.035, 0.0, uTheme) * hgt * (1.0 - clamp((rel.y + R) / (2.0 * R), 0.0, 1.0) * 0.7);
+    // the light does not only run round the rim: it floods the glass from the left as the loop closes,
+    // soft-edged, never a line across the label (the label lights up as the front passes it)
+    float fx = mix(-uHalf.x - 8.0, uHalf.x + 8.0, uProg);
+    float fill = smoothstep(fx + 46.0, fx - 46.0, rel.x) * on;
+    kc = emit(kc, fill * (0.13 + 0.1 * uProg) * (0.6 + 0.4 * hgt));
     kc = emit(kc, scatter * 0.45 + exp(-depth / 2.2) * scatter * 0.8);
     // Fresnel: the rounded flanks mirror a bright room and the strip's light
     vec3 Rr = reflect(V, n3);
@@ -117,7 +124,7 @@ void main() {
     vec2 toPtr = (uPtr - uK) / max(uHalf.x, 1.0);
     vec3 L = normalize(mix(vec3(-0.3, 0.75, 0.6), vec3(toPtr.x, -toPtr.y * 2.0, 0.7), uPtrOn * 0.8));
     float spk = max(dot(Rr, L), 0.0);
-    kc += pow(spk, 220.0) * 1.6 + pow(spk, 20.0) * mix(0.06, 0.1, uTheme);
+    kc += pow(spk, 46.0) * 0.1 + pow(spk, 14.0) * mix(0.07, 0.11, uTheme); // a soft sheen: a sharp glint shrinks to a stray pixel here
     // a long soft window reflection along the top of the slab
     float win = exp(-pow((rel.y + R * 0.52) / 6.0, 2.0)) * smoothstep(uHalf.x, uHalf.x - 50.0, abs(rel.x)) * hgt;
     kc += win * mix(0.22, 0.3, uTheme);
@@ -126,6 +133,14 @@ void main() {
     col = mix(kc, col, smoothstep(-0.7, 0.7, sk));
   }
 
+  // at rest the loop is already there as a faint trace, with an ember waiting where the light starts:
+  // the path shows what holding will do
+  {
+    float trace = 1.0 - smoothstep(0.0, 1.1, abs(sdPill(p) - 7.0) - 0.45);
+    col = emit(col, trace * mix(0.11, 0.2, uTheme) * (1.0 - 0.6 * on));
+    float ed = length(p - uK - vec2(0.0, -uHalf.y - 7.0));
+    col = emit(col, (smoothstep(2.6, 1.2, ed) * 0.9 + exp(-ed / 9.0) * 0.4) * (0.55 + uKick * 3.0) * (1.0 - on));
+  }
   // the strip itself
   if (on > 0.0) {
     float ld = stripD(p);
@@ -230,7 +245,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     const ky = st.cy + press * 3 + by;
 
     // label: pixels left of the sweep are lit
-    const sweepX = -HALF[0] * 0.5 + prog * HALF[0];
+    const sweepX = -HALF[0] - 8 + prog * (HALF[0] * 2 + 16); // the front of the light flooding the glass
     label.ox = kx - st.cx;
     label.step(dt, { ptr: st.local(label), shy: holding ? 0 : st.ptrOn });
 

@@ -62,6 +62,11 @@ export function bitmapCells(rows, pitch, b = 1) {
 // can be shown near full size instead of shrunk to half
 export const compact = () => !!window.matchMedia?.('(max-width: 600px)').matches;
 
+// while a full-size control powers on, its first pixels do not simply appear: they gather from a loose
+// cloud and swirl into place (the engine opens this window when a stage is created and when it is ready)
+let assembleUntil = 0;
+const gathered = []; // matrices that were scattered; one nobody steps (a static readout) is snapped into place instead
+
 export class PixelMatrix {
   constructor({ size = 4.2, swirl = 10, shyR = 34, shyF = 18 } = {}) { this.px = []; this.size = size; this.swirl = swirl; this.ox = 0; this.oy = 0; this.shyR = shyR; this.shyF = shyF; }
 
@@ -73,6 +78,7 @@ export class PixelMatrix {
       for (const d of [dx, dy]) if (d > 0.01 && d < pitch) pitch = d;
     }
     if (Number.isFinite(pitch)) this.pitch = pitch;
+    const gather = performance.now() < assembleUntil, first = this.px.length === 0;
     const key = (x, y) => Math.atan2(y, x) + Math.hypot(x, y) * 1e-3;
     const live = this.px.filter(p => !p.dying).sort((a, b) => key(a.tx, a.ty) - key(b.tx, b.ty));
     const tgt = [...cells].sort((a, b) => key(a.x, a.y) - key(b.x, b.y));
@@ -103,7 +109,13 @@ export class PixelMatrix {
       else p.delay = 0;
       p.drag = p.drag ?? rand(0.004, 0.016); p.sx = p.sx ?? 0; p.sy = p.sy ?? 0;
       if (p.vx === undefined) { p.vx = 0; p.vy = 0; }
-      if (instant) { p.x = p.tx; p.y = p.ty; p.b = p.tb; p.vx = p.vy = 0; }
+      if (instant && !gather) { p.x = p.tx; p.y = p.ty; p.b = p.tb; p.vx = p.vy = 0; }
+      else if (gather && first) {
+        if (!gathered.includes(this)) gathered.push(this);
+        const a = rand(0, Math.PI * 2), d = rand(26, 70);
+        p.x = p.tx + Math.cos(a) * d; p.y = p.ty + Math.sin(a) * d; p.b = 0; p.vx = p.vy = 0;
+        p.delay = 0.12 + rand(0, 0.3) + Math.min(0.25, Math.abs(p.tx) / 900); p.curl = rand(-1, 1) * Math.max(this.swirl, 8);
+      }
       next.push(p);
     }
     this.px = next;
@@ -112,7 +124,7 @@ export class PixelMatrix {
   // ptr: pointer relative to this matrix's origin, shy: 0..1 how much pixels flee it (the toggle's
   // "shy pixels"), vel: the body's velocity in px/s so pixels trail behind it (the toggle's drag)
   step(dt, { ptr = null, shy = 0, vel = 0 } = {}) {
-    this.vel = vel;
+    this.vel = vel; this.stepped = true;
     for (const p of this.px) {
       // shy offset springs toward a push away from the pointer
       let ox = 0, oy = 0;
@@ -231,6 +243,11 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).t
   const sparkBuf = new Float32Array(28 * 4);
   const calm = reducedMotion();
   const now = () => performance.now() / 1000;
+  if (!thumb && !calm) { assembleUntil = performance.now() + 2500; ready.then(() => { assembleUntil = performance.now() + 220; }); }
+  // idle life: the light breathes, and a glint crosses the glass now and then while nobody touches it
+  let lastTouch = now(), idleGlint = 0;
+  const touched = () => { lastTouch = now(); };
+  if (!thumb) window.addEventListener('keydown', touched);
 
   // ---- effects (coordinates are offsets from the design centre)
   st.burst = (x, y, count = 12, power = 1, dir = null, spread = Math.PI) => {
@@ -276,7 +293,7 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).t
     st.cx = st.w / 2 - thumb.fx * st.S; st.cy = st.h / 2 - thumb.fy * st.S;
   };
   st.bindPointer = handlers => {
-    const wrap = fn => fn && ((p, e) => { st.dp = st.toDesign(p.x, p.y); fn(p, e, st.dp); });
+    const wrap = fn => fn && ((p, e) => { touched(); st.dp = st.toDesign(p.x, p.y); fn(p, e, st.dp); });
     st.ptr = pointer(canvas, { down: wrap(handlers.down), up: wrap(handlers.up), move: wrap(handlers.move) });
     return st.ptr;
   };
@@ -355,7 +372,7 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).t
     gl.uniform3f(U.uWave, st.wave?.x ?? 0, st.wave?.y ?? 0, wa >= 0 && wa < 2.5 ? wa : -1);
     gl.uniform1f(U.uSweep, Math.min(99, now() - st.sweepT));
     gl.uniform3f(U.uFxLight, ...st.fxLight);
-    gl.uniform1f(U.uKick, st.kick);
+    gl.uniform1f(U.uKick, st.kick + (thumb || calm ? 0 : 0.11 * (0.5 + 0.5 * Math.sin(t * 0.85))));
     set(U, gl);
     tri.draw();
   };
@@ -391,11 +408,16 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).t
   };
 
   st.run = step => {
-    let born = false;
+    let born = false, frames = 0;
     const L = loop((dt, t) => {
       const t0 = performance.now();
       // power-on: a control arrives with a surge of its light and a glint wiping across the glass
       if (!born && prog) { born = true; if (!thumb && !calm) { st.glint(); st.pulse(1); } }
+      else if (born && !thumb && gathered.length && ++frames > 3) {
+        for (const m of gathered) if (!m.stepped) for (const p of m.px) { p.x = p.tx; p.y = p.ty; p.b = p.tb; p.vx = p.vy = 0; p.delay = 0; }
+        gathered.length = 0;
+      }
+      if (born && !thumb && !calm && now() - Math.max(lastTouch, idleGlint) > 9) { idleGlint = now(); st.glint(); }
       st.trackPointer(dt); stepFx(dt); st.kick *= Math.exp(-dt * 3.5); step(dt, t);
       if (PERF) { const ms = performance.now() - t0; PERF.n++; PERF.sum += ms; PERF.max = Math.max(PERF.max, ms); }
     });
@@ -404,7 +426,7 @@ in vec2 aPos; void main(){ gl_Position = vec4(aPos, 0.0, 1.0); }`, LIB + frag).t
   };
 
   st.dispose = () => {
-    st.loop?.dispose(); st.ptr?.dispose(); view.dispose(); if (!thumb) sfx.air(0);
+    st.loop?.dispose(); st.ptr?.dispose(); view.dispose(); if (!thumb) { sfx.air(0); window.removeEventListener('keydown', touched); }
     gl.deleteTexture(texPix); gl.deleteTexture(texGlow); tri.dispose(); if (prog) gl.deleteProgram(prog.prog);
     loseContext(gl); canvas.remove();
   };

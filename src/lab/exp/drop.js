@@ -34,7 +34,9 @@ vec3 scene(vec2 q, vec2 sp, float frost) {
       vec3 tc = tray(col, sw, length(q - vec2(uWellX.x, wy + 6.0)) - ${WELL_R}.0, q, vec2(uWellX.x, wy), vec2(${WELL_R}.0));
       // the lower inner lip catches a thread of light: the empty well invites, brighter on hover
       float lip = exp(-abs(sw + 1.6) / 1.4) * smoothstep(-${WELL_R}.0 * 0.2, ${WELL_R}.0, q.y - wy);
-      tc = emit(tc, lip * (0.15 + 0.3 * uDropL[i].y) * (uDrop[i].z > 0.5 ? 0.4 : 1.0));
+      tc = emit(tc, lip * (0.24 + 0.3 * uDropL[i].y) * (uDrop[i].z > 0.5 ? 0.4 : 1.0));
+      // and a wet gleam on its floor that breathes with the light: the well is waiting, not dead
+      if (uDrop[i].z < 0.5) tc = emit(tc, exp(-length(q - vec2(uWellX.x + 5.0, wy + 9.0)) / 8.0) * (0.07 + uKick * 0.9 + 0.16 * uDropL[i].y));
       // ripple running over the floor after a drop lands
       if (uRipple[i] >= 0.0) {
         float rr = length(q - vec2(uWellX.x, wy));

@@ -71,6 +71,8 @@ vec3 scene(vec2 q, vec2 sp, float frost, out float cover) {
     col = emitC(col, uLiq, inL * (0.65 + 0.35 * depth) * uEnergy);
     col = mix(col, uLiq * mix(0.9, 0.78, depth), inL * 0.7 * uTheme);   // on the light page the liquid needs body, not just glow
     col = emitC(col, mix(uLiq, vec3(1.0), 0.5), smoothstep(2.5, 0.0, abs(q.x - lx)) * step(0.001, uLevel) * step(uLevel, 0.995) * 0.7);
+    // empty, the tube keeps an ember at its mouth that breathes with the light: strength will grow from here
+    col = emitC(col, uL, exp(-length(q - vec2(x0 - uTube.w * 0.3, uTube.y)) / 4.5) * (0.35 + uKick * 2.5) * (1.0 - step(0.001, uLevel)) * uEnergy);
   }
   col = emitC(col, uLiq, exp(-max(st, 0.0) / 10.0) * uLevel * 0.25 * uEnergy);
   float f = max(fil(q), 0.0);

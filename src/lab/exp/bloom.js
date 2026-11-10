@@ -130,7 +130,7 @@ void main() {
 
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
-  const K = thumb ? 0.78 : 1;
+  const K = thumb ? 0.78 : 1.3; // the full control is generous: big drops are more fun to pull
   const CR = 34 * K, BR = 24 * K, ROUT = 98 * K;
   const st = glassStage(root, { frag: FRAG, box: [ROUT * 2 + BR * 2 + 80, ROUT * 2 + BR * 2 + (thumb ? 60 : 130)], thumb });
   await st.ready;

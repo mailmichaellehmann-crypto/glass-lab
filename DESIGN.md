@@ -83,6 +83,9 @@ inklusive dessen, was nicht funktioniert hat. Ein neues Element ist fertig, wenn
 - **Die Schockwelle ist ein Ereignis für die ganze Seite** (`glass:wave`): Der Shader biegt den Raum, die Perlen werden im selben Takt nach außen gedrückt und blitzen auf. Wellen nur über `shockwave()` in `main.js` auslösen.
 - **Öffnen und Schließen:** Die Flut hat eine Wellenfront (`.lab-wave`), die exakt auf der Kante des Kreises läuft (gleicher Ursprung, Radius, Dauer, Kurve wie der `clip-path`). Beim Schließen lebt das Element im schrumpfenden Kreis weiter, die Perle fängt das Licht und gibt den Stoß an die Nachbarn weiter.
 - **Ankommen:** Ein Element schaltet sich ein (Lichtstoß + Glanzstreifen, automatisch durch die Engine) und setzt sich federnd. Beim Blättern geht das alte zur einen Seite, das neue kommt von der anderen (`--dir`).
+- **Pixel sammeln sich:** Beim Einschalten erscheinen die ersten Pixel nicht einfach, sie wirbeln aus einer losen Wolke an ihren Platz (Engine, automatisch). Eine Matrix, die nie `step()` bekommt (statische Anzeige), setzt die Engine nach wenigen Frames direkt.
+- **Leben in Ruhe:** Das Licht atmet leicht (`uKick` trägt einen langsamen Atem), und nach rund 9 s ohne Eingabe läuft ein Glanzstreifen über das Glas. Nicht pro Element nachbauen.
+- **Wartende Glut:** Ein leeres Element ist nicht tot. Wo das Licht beginnen wird, sitzt eine kleine Glut, die mit `uKick` atmet (Hold: Startpunkt der Schleife plus schwache Spur der Bahn, Drop: Glanz am Muldenboden, Secret: Mündung der Röhre).
 - `prefers-reduced-motion`: keine Wellenfront, kein Perlen-Stoß, kein Einschweben.
 
 ## 11. Ablauf für ein neues Element
