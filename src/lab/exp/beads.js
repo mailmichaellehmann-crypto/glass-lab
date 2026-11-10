@@ -8,8 +8,9 @@
 // When everything is done a chain of light runs along the rail's lower lip.
 
 import { glassStage, PixelMatrix, Spring, textCells, hasGlyph, hexRgb, mix3 } from '../glass/engine.js';
+import { clamp } from '../kit.js';
 
-const NB = 7, MAXC = 10;                      // up to 6 tasks + the input bead
+const NB = 14, MAXC = 10;                     // beads drawn at once (only the visible ones are sent)
 const OPEN = hexRgb('#ff9ad5'), DONE = hexRgb('#3dffa8');
 const PITCH = 3.2;
 const textW = s => (s.length ? s.length * 4 - 1 : 0) * PITCH;
@@ -25,22 +26,26 @@ uniform int   uDrag;           // index of the lifted bead, -1 none
 uniform int   uIn;             // index of the input bead
 uniform vec3  uL, uLD;
 uniform float uEnergy, uChain, uFilOn, uHead, uFocus;
+uniform vec2  uMore;           // how much of the row hides past the left / right end
 
 float sdBead(vec2 p, int i) { vec4 b = uBead[i]; return sdRoundBox(p - b.xy, b.zw, b.w); }
+// a resting bead slides under the rail's lip at the ends: it is cut by the rail's inner edge
+float sdBeadIn(vec2 p, int i) { return max(sdBead(p, i), sdRoundBox(p - uC, uRail, uRail.y) + 4.0); }
 // all beads resting in the rail (the lifted one is drawn on top, separately)
 float sdRest(vec2 p, out int idx) {
   float d = 1e5; idx = -1;
   for (int i = 0; i < NB; i++) {
     if (i >= uBeadN) break;
     if (i == uDrag || uBead[i].w < 0.5) continue;
-    float e = sdBead(p, i);
+    float e = sdBeadIn(p, i);
     if (e < d) { d = e; idx = i; }
   }
   return d;
 }
 vec2 beadNormal(vec2 p, int i) {
   vec2 e = vec2(0.5, 0.0);
-  return normalize(vec2(sdBead(p + e.xy, i) - sdBead(p - e.xy, i), sdBead(p + e.yx, i) - sdBead(p - e.yx, i)) + 1e-5);
+  if (i == uDrag) return normalize(vec2(sdBead(p + e.xy, i) - sdBead(p - e.xy, i), sdBead(p + e.yx, i) - sdBead(p - e.yx, i)) + 1e-5);
+  return normalize(vec2(sdBeadIn(p + e.xy, i) - sdBeadIn(p - e.xy, i), sdBeadIn(p + e.yx, i) - sdBeadIn(p - e.yx, i)) + 1e-5);
 }
 
 // arc-length position around a rounded box: the filament runs at an even speed around a capsule
@@ -119,6 +124,9 @@ vec3 railAt(vec2 p, vec2 sp, float frost, vec2 ca, out float cover) {
     }
   }
   col = emitC(col, mix(uL, uLD, lipDone), lip * (0.25 + 0.75 * lipDone) * uEnergy);
+  // where the row goes on past an end, that end falls into shadow: there is more under the lip
+  float ex = p.x - uC.x;
+  col *= 1.0 - (uMore.x * exp(-(ex + hs.x) / 34.0) + uMore.y * exp(-(hs.x - ex) / 34.0)) * mix(0.55, 0.22, uTheme);
   // the beads' shadows in the rail; the lifted one throws a longer, softer one
   for (int i = 0; i < NB; i++) {
     if (i >= uBeadN) break;
@@ -176,11 +184,13 @@ void main() {
   fragColor = vec4(finishAt(col, p), 1.0);
 }`;
 
+
 export async function mount(root, { reducedMotion, thumb = null, demo = false }) {
   thumb = thumb && { ...thumb };
-  const RAIL = thumb ? [84, 28] : [292, 34];      // the miniature rail fits its three beads
+  // the rail grows with its tasks up to RMAX; past that the row scrolls inside it, endlessly
+  const RMIN = thumb ? 84 : 150, RMAX = thumb ? 84 : 300, RH = thumb ? 28 : 34;
   const HH = thumb ? 20 : 23, GAP = 8, PAD = thumb ? 9 : 11;
-  const st = glassStage(root, { frag: FRAG, box: [RAIL[0] * 2 + 80, RAIL[1] * 2 + (thumb ? 60 : 150)], thumb });
+  const st = glassStage(root, { frag: FRAG, box: [RMAX * 2 + 80, RH * 2 + (thumb ? 60 : 150)], thumb });
   await st.ready;
   const S = st.sfx;
   const buzz = pat => { if (!thumb && navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); };
@@ -190,27 +200,32 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const later = (dt, fn) => events.push({ t: clock + dt, fn });
   const halfFor = s => Math.max(textW(s), 14) / 2 + (thumb ? 14 : 19);
 
-  // ---------------------------------------------------------------- beads
+  // ---------------------------------------------------------------- beads (positions along the row, from its start)
   const makeBead = (word, done = false) => {
     const m = new PixelMatrix({ size: PITCH, swirl: 7, shyR: 12, shyF: 4 });
     m.set(textCells(word, PITCH), { instant: true });
     const hw = halfFor(word);
-    return { word, done, x: 0, vx: 0, y: 0, vy: 0, slot: 0, hw, hwC: hw, grow: 1, state: 'on', lift: 0, jelly: new Spring(380, 10), m, fill: done ? 1 : 0, strike: done ? 1 : 0, flash: 0 };
+    return { word, done, x: 0, vx: 0, y: 0, vy: 0, slot: 0, hw, hwC: hw, grow: 1, state: 'on', lift: 0, jelly: new Spring(380, 10), m, fill: done ? 1 : 0, strike: done ? 1 : 0, flash: 0, sx: 0 };
   };
   const tasks = (thumb ? [['UI', false], ['FX', true]] : [['CALL MOM', false], ['MILK', true], ['GYM', false]]).map(([w, d]) => makeBead(w, d));
-  const input = { text: '', x: 0, slot: 0, hw: halfFor(''), hwC: 0, grow: 0, jelly: new Spring(380, 10), m: new PixelMatrix({ size: PITCH, swirl: 6, shyR: 10, shyF: 3 }), shake: 0 };
+  const input = { text: '', x: 0, slot: 0, hw: halfFor(''), hwC: 0, grow: 0, jelly: new Spring(380, 10), m: new PixelMatrix({ size: PITCH, swirl: 6, shyR: 10, shyF: 3 }), shake: 0, sx: 0 };
+  let rowW = 0;
   const layout = () => {
-    let x = -RAIL[0] + PAD;
+    let x = PAD;
     for (const b of tasks) { if (b.state === 'pop') continue; b.slot = x + b.hw; x += b.hw * 2 + GAP; }
     input.slot = x + input.hw;
-  };
-  const room = extra => {
-    const used = tasks.filter(b => b.state !== 'pop').reduce((s, b) => s + b.hw * 2 + GAP, PAD);
-    return used + extra * 2 <= RAIL[0] * 2 - PAD;
+    rowW = x + input.hw * 2 + PAD;
   };
   layout();
   tasks.forEach(b => { b.x = b.slot; });
   input.x = input.slot; input.hwC = input.hw; input.grow = 1;
+
+  // ---------------------------------------------------------------- the rail's length and the scroll
+  let railH = Math.min(RMAX, Math.max(RMIN, rowW / 2)), railV = 0;
+  let scroll = 0, scrollV = 0, follow = 1;          // follow: glide to the input bead (after typing)
+  const maxScroll = () => Math.max(0, rowW - railH * 2);
+  const toScreen = u => -railH + u - scroll;        // row position → design x
+  const toRow = x => x + railH + scroll;
 
   let chain = 0, allDoneSeen = false;
   const live = () => tasks.filter(b => b.state !== 'pop');
@@ -223,7 +238,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
         if (!live().every(b => b.done)) return;
         chain = 0.001; st.light = DONE; st.glint(); st.shock(0, 0);
         [0.45, 0.6, 0.75, 0.9].forEach((p, i) => later(i * 0.08, () => S.key(p)));
-        live().forEach((b, i) => later(0.08 + i * 0.09, () => { b.flash = 1; b.jelly.kick(-4); }));
+        live().forEach((b, i) => later(0.08 + i * 0.07, () => { b.flash = 1; b.jelly.kick(-4); }));
         buzz([10, 40, 10, 40, 20]);
       });
     } else { allDoneSeen = false; chain = 0; }
@@ -231,7 +246,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const toggle = b => {
     b.done = !b.done;
     b.jelly.kick(-5);
-    if (b.done) { b.flash = 1; st.light = DONE; S.ping(true); buzz(10); st.pulse(0.6); st.burst(b.x - b.hw + 10, 0, 6, 0.35, 0, 0.7); }
+    if (b.done) { b.flash = 1; st.light = DONE; S.ping(true); buzz(10); st.pulse(0.6); st.burst(b.sx - b.hw + 10, 0, 6, 0.35, 0, 0.7); }
     else { S.ping(false); st.pulse(0.3); }
     checkAllDone();
   };
@@ -239,32 +254,29 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     if (b.state === 'pop') return;
     b.state = 'pop'; b.m.set([]);
     st.light = b.done ? DONE : OPEN;
-    st.burst(b.x, b.y, 18, 0.8);
+    st.burst(b.sx, b.y, 18, 0.8);
     S.drip(0.95, 0.7); S.tick(0.9, 0.5); buzz(8);
     // the gap closes only after the bead is gone, so nothing slides through it
     later(0.22, () => { const i = tasks.indexOf(b); if (i >= 0) tasks.splice(i, 1); layout(); checkAllDone(); });
   };
-  const refuse = () => { input.shake = 1; S.tick(0.15, 0.8); later(0.1, () => S.tick(0.12, 0.8)); buzz([20, 30, 20]); };
   let inp = null, focused = false, caretT = 0;
   const commit = () => {
     const w = input.text.trim();
     if (!w) { input.jelly.kick(-2); S.tick(0.25, 0.3); return; }
-    if (live().length >= NB - 1 || !room(halfFor(w) + halfFor(''))) { refuse(); return; }
     const b = makeBead(w);
     b.x = input.x; b.slot = input.slot; b.hwC = input.hwC; b.jelly.kick(-4); b.flash = 0.5;
     tasks.push(b);
     input.text = ''; input.m.set([], { instant: true }); input.hw = halfFor(''); input.hwC = 0; input.grow = 0;
     if (inp) inp.value = '';
     layout(); input.x = input.slot;
+    follow = 1;
     S.drip(0.55, 0.55); S.tick(0.7, 0.4); st.glint(); st.pulse(0.4);
     allDoneSeen = false; chain = 0;
   };
   const setText = s => {
-    if (s.length > input.text.length && !room(halfFor(s))) { refuse(); return false; }
     input.text = s; input.hw = halfFor(s);
     input.m.set(textCells(s, PITCH));
-    layout();
-    return true;
+    layout(); follow = 1;
   };
 
   // ---------------------------------------------------------------- typing straight into the input bead
@@ -279,7 +291,8 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       const want = [...inp.value.toUpperCase()].filter(c => hasGlyph(c)).join('').replace(/^ +/, '').replace(/ {2,}/g, ' ').slice(0, MAXC);
       if (want !== input.text) {
         const grew = want.length > input.text.length;
-        if (setText(want) && grew) { S.tick(0.5 + want.length * 0.03, 0.35); input.jelly.kick(-1); }
+        setText(want);
+        if (grew) { S.tick(0.5 + want.length * 0.03, 0.35); input.jelly.kick(-1); }
       }
       if (inp.value !== input.text) inp.value = input.text;
       caretT = 0;
@@ -289,7 +302,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       else if (e.key === 'Backspace' && !inp.value) {
         e.preventDefault();
         const last = [...tasks].reverse().find(b => b.state === 'on');
-        if (last) pop(last);
+        if (last) { pop(last); follow = 1; }
       }
     });
     inp.addEventListener('focus', () => { focused = true; });
@@ -297,62 +310,88 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     setTimeout(() => inp?.focus({ preventScroll: true }), 350);
   }
 
-  // ---------------------------------------------------------------- pointer: a tap ticks a task off, a drag lifts its bead
+  // ---------------------------------------------------------------- pointer: tap ticks off, drag lifts a bead, drag the rail scrolls
   const local = d => [d[0] - st.cx, d[1] - st.cy];
-  const taskAt = ([x, y]) => tasks.find(b => b.state === 'on' && Math.abs(x - b.x) < b.hwC + 3 && Math.abs(y - b.y) < HH + 4);
-  const onInput = ([x, y]) => Math.abs(x - input.x) < input.hwC + 6 && Math.abs(y) < HH + 6;
+  const inRail = ([x, y]) => Math.abs(x) < railH + 4 && Math.abs(y) < RH + 4;
+  const taskAt = ([x, y]) => (inRail([x, y]) ? tasks.find(b => b.state === 'on' && Math.abs(x - b.sx) < b.hwC + 3 && Math.abs(y - b.y) < HH + 4) : null);
+  const onInput = ([x, y]) => inRail([x, y]) && Math.abs(x - input.sx) < input.hwC + 6 && Math.abs(y) < HH + 6;
   let drag = null, hoverB = null;
   st.bindPointer({
     down: (p, e, d) => {
       const q = local(d);
       S._ensure();
       const b = taskAt(q);
-      if (b) { drag = { b, off: [q[0] - b.x, q[1] - b.y], x0: q[0], y0: q[1], moved: 0 }; b.jelly.kick(-2); return; }
-      if (inp && onInput(q)) { inp.focus({ preventScroll: true }); input.jelly.kick(-2); }
+      if (b) { drag = { kind: 'bead', b, off: [q[0] - b.sx, q[1] - b.y], x0: q[0], y0: q[1], moved: 0 }; b.jelly.kick(-2); return; }
+      if (inp && onInput(q)) { inp.focus({ preventScroll: true }); input.jelly.kick(-2); return; }
+      if (inRail(q)) { drag = { kind: 'pan', x0: q[0], s0: scroll, last: q[0], t: performance.now(), v: 0 }; scrollV = 0; follow = 0; }
     },
     move: (p, e, d) => {
       const q = local(d);
       hoverB = taskAt(q);
-      st.canvas.style.cursor = drag && drag.b.state === 'drag' ? 'grabbing' : hoverB ? 'pointer' : onInput(q) ? 'text' : 'default';
+      st.canvas.style.cursor = drag ? 'grabbing' : hoverB ? 'pointer' : onInput(q) ? 'text' : inRail(q) && maxScroll() > 0 ? 'grab' : 'default';
       if (!drag) return;
+      if (drag.kind === 'pan') {
+        const now = performance.now(), dtp = Math.max(8, now - drag.t) / 1000;
+        drag.v = drag.v * 0.4 + (-(q[0] - drag.last) / dtp) * 0.6;
+        drag.last = q[0]; drag.t = now;
+        scroll = drag.s0 - (q[0] - drag.x0);
+        return;
+      }
       const b = drag.b;
       drag.moved = Math.max(drag.moved, Math.hypot(q[0] - drag.x0, q[1] - drag.y0));
       if (drag.moved < 7) return;
-      if (b.state !== 'drag') { b.state = 'drag'; S.tick(0.55, 0.4); }
-      b.tx = q[0] - drag.off[0]; b.ty = q[1] - drag.off[1];
-      const off = Math.abs(b.ty) > RAIL[1] + 22;
+      if (b.state !== 'drag') { b.state = 'drag'; follow = 0; S.tick(0.55, 0.4); }
+      drag.qx = q[0];
+      b.tsx = q[0] - drag.off[0]; b.ty = q[1] - drag.off[1];
+      const off = Math.abs(b.ty) > RH + 22;
       if (off !== !!b.off) { b.off = off; S.tick(off ? 0.25 : 0.6, 0.4); }
-      // reorder: the lifted bead takes the place it is over; the others slide aside under it
-      if (!b.off) {
-        const order = live();
-        const sorted = [...order].sort((u, v) => (u === b ? b.tx : u.slot) - (v === b ? b.tx : v.slot));
-        if (sorted.some((x, i) => x !== order[i])) {
-          const popping = tasks.filter(x => x.state === 'pop');
-          tasks.length = 0; tasks.push(...sorted, ...popping);
-          layout(); S.tick(0.62, 0.35);
-        }
-      }
     },
     up: () => {
       if (!drag) return;
-      const { b, moved } = drag;
+      const dd = drag;
       drag = null;
+      if (dd.kind === 'pan') { scrollV = clamp(dd.v, -2500, 2500); suppressClick = Math.abs(dd.last - dd.x0) > 4; return; }
+      if (dd.moved >= 7) suppressClick = true;
+      const { b, moved } = dd;
       if (b.state === 'drag') {
         if (b.off) { pop(b); return; }
-        b.state = 'on'; b.jelly.kick(3); S.tick(0.5, 0.4); st.glint();
+        b.state = 'on'; b.x = toRow(b.sx); b.vx = 0; b.jelly.kick(3); S.tick(0.5, 0.4); st.glint();
         return;
       }
       if (moved < 7) toggle(b);
     },
   });
-  const onClick = () => { if (!drag) inp?.focus({ preventScroll: true }); };
+  // trackpads and wheels scroll the row
+  const onWheel = e => {
+    if (maxScroll() <= 0) return;
+    e.preventDefault();
+    scroll += (Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : e.deltaY) / st.S;
+    scrollV = 0; follow = 0;
+  };
+  st.canvas.addEventListener('wheel', onWheel, { passive: false });
+  // a click focuses the input bead, but not the click that ends a pan or a drag
+  let suppressClick = false;
+  const onClick = () => { if (suppressClick) { suppressClick = false; return; } if (!drag) inp?.focus({ preventScroll: true }); };
   st.canvas.addEventListener('click', onClick);
 
   // ---------------------------------------------------------------- autopilot (shelf miniature): ticks the tasks off, then starts over
-  let demoT = 0, filOn = 0, head = 0, shownCaption = null;
+  let demoT = 0, filOn = 0, head = 0, shownCaption = null, lastEdge = 0;
   const caption = new PixelMatrix({ size: 2.8, swirl: 8, shyR: 12, shyF: 4 });
-  caption.oy = RAIL[1] + 34;
+  caption.oy = RH + 34;
   const bU = new Float32Array(NB * 4), fU = new Float32Array(NB * 4), tU = new Float32Array(NB);
+  // a bead's pixels fade where it slides under the rail's lip
+  const edgeA = x => clamp((railH - 10 - Math.abs(x)) / 12, 0, 1);
+  const drawClipped = (m, gain) => {
+    for (const p of m.px) {
+      const [x, y] = m.at(p);
+      const a = p.b * gain * edgeA(x);
+      if (a < 0.01) continue;
+      ctx_.globalAlpha = Math.min(1, a);
+      ctx_.fillRect(x - m.size / 2, y - m.size / 2, m.size, m.size);
+    }
+    ctx_.globalAlpha = 1;
+  };
+  let ctx_ = null;
 
   st.run((dt, t) => {
     clock = t;
@@ -367,6 +406,28 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     }
     if (chain > 0) chain = Math.min(1, chain + dt * 1.2);
 
+    // the rail stretches to its row (a spring), up to its full length
+    const wantH = Math.min(RMAX, Math.max(RMIN, rowW / 2));
+    { const k = 180, c = 2 * Math.sqrt(k) * 0.8; railV += (-k * (railH - wantH) - c * railV) * dt; railH += railV * dt; }
+    // scroll: momentum after a flick, rubber band at the ends, or glide to the input bead
+    const ms = maxScroll();
+    if (drag && drag.kind === 'bead' && drag.b.state === 'drag' && drag.qx !== undefined) {
+      // dragging a bead near an end scrolls the row along
+      const edge = clamp((Math.abs(drag.qx) - (railH - 60)) / 50, 0, 1) * Math.sign(drag.qx);
+      scroll += edge * 420 * dt;
+      if (Math.sign(edge) !== lastEdge && edge !== 0) S.tick(0.4, 0.2);
+      lastEdge = Math.sign(edge);
+    }
+    if (!(drag && drag.kind === 'pan')) {
+      if (follow) scroll += (ms - scroll) * Math.min(1, dt * 7);
+      else {
+        scroll += scrollV * dt; scrollV *= Math.exp(-dt * 3.2);
+        if (scroll < 0) { scroll += -scroll * Math.min(1, dt * 12); scrollV *= 0.5; }
+        if (scroll > ms) { scroll += (ms - scroll) * Math.min(1, dt * 12); scrollV *= 0.5; }
+      }
+    }
+    const moreL = clamp(scroll / 30, 0, 1), moreR = clamp((ms - scroll) / 30, 0, 1);
+
     for (const b of tasks) {
       b.flash *= Math.exp(-dt * 2.5);
       b.fill += ((b.done ? 1 : 0) - b.fill) * Math.min(1, dt * (b.done ? 3.2 : 6));
@@ -374,17 +435,30 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       if (b.done) b.strike = Math.min(b.strike, b.fill); // the strike follows the light in
       b.lift += ((b.state === 'drag' ? 1 : hoverB === b && !drag ? 0.25 : 0) - b.lift) * Math.min(1, dt * 12);
       b.hwC += (b.hw - b.hwC) * Math.min(1, dt * 14);
-      if (b.state === 'pop') { b.grow = Math.max(0, b.grow - dt * 6); continue; }
+      if (b.state === 'pop') { b.grow = Math.max(0, b.grow - dt * 6); b.sx = toScreen(b.x); continue; }
       if (b.state === 'drag') {
-        b.x += (b.tx - b.x) * Math.min(1, dt * 24);
+        b.sx += (b.tsx - b.sx) * Math.min(1, dt * 24);
         b.y += (b.ty - b.y) * Math.min(1, dt * 24);
+        b.x = toRow(b.sx);
       } else {
         const k = 260, c = 2 * Math.sqrt(k) * 0.72;
         b.vx += (-k * (b.x - b.slot) - c * b.vx) * dt; b.x += b.vx * dt;
         b.vy += (-k * b.y - c * b.vy) * dt; b.y += b.vy * dt;
+        b.sx = toScreen(b.x);
       }
-      b.m.ox = b.x; b.m.oy = b.y;
+      b.m.ox = b.sx; b.m.oy = b.y;
       b.m.step(dt, { ptr: st.local(b.m), shy: st.ptrOn * (drag ? 0 : 0.45), vel: b.state === 'drag' ? 0 : b.vx * 0.25 });
+    }
+    // reorder while a bead is lifted: it takes the place it is over, the others slide aside under it
+    if (drag && drag.kind === 'bead' && drag.b.state === 'drag' && !drag.b.off) {
+      const b = drag.b;
+      const order = live();
+      const sorted = [...order].sort((u, v) => (u === b ? b.x : u.slot) - (v === b ? b.x : v.slot));
+      if (sorted.some((x, i) => x !== order[i])) {
+        const popping = tasks.filter(x => x.state === 'pop');
+        tasks.length = 0; tasks.push(...sorted, ...popping);
+        layout(); S.tick(0.62, 0.35);
+      }
     }
     // the input bead follows the row; it grows with the word, a refused word makes it shake its head
     input.grow = Math.min(1, input.grow + dt * 5);
@@ -392,12 +466,13 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     input.x += (input.slot - input.x) * Math.min(1, dt * 12);
     input.shake *= Math.exp(-dt * 5);
     const shakeX = reducedMotion ? 0 : Math.sin(t * 60) * 6 * input.shake;
-    input.m.ox = input.x + shakeX; input.m.oy = 0;
+    input.sx = toScreen(input.x) + shakeX;
+    input.m.ox = input.sx; input.m.oy = 0;
     input.m.step(dt, { ptr: null, shy: 0 });
     caretT += dt;
 
     // the filament circles the input bead while you can type into it
-    filOn += (((focused || thumb) && !drag ? 1 : 0.35) - filOn) * Math.min(1, dt * 6);
+    filOn += (((focused || thumb) && !drag ? 1 : 0.35) * edgeA(input.sx) - filOn) * Math.min(1, dt * 6);
     head = (head + dt * (reducedMotion ? 50 : 150) / (4 * (input.hwC + HH) + 2 * Math.PI * HH)) % 1;
 
     const l = live();
@@ -406,47 +481,56 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     if (word !== shownCaption) { caption.set(word ? textCells(word, 2.8) : []); shownCaption = word; }
     caption.step(dt, { ptr: st.local(caption), shy: st.ptrOn * 0.5 });
     if (!events.length && chain === 0) st.light = mix3(st.light, OPEN, Math.min(1, dt * 3));
-    if (inp) Object.assign(inp.style, { left: `${st.cx + (input.x - input.hwC) * st.S}px`, top: `${st.cy - HH * st.S}px`, width: `${input.hwC * 2 * st.S}px`, height: `${HH * 2 * st.S}px` });
+    if (inp) Object.assign(inp.style, { left: `${st.cx + (input.sx - input.hwC) * st.S}px`, top: `${st.cy - HH * st.S}px`, width: `${input.hwC * 2 * st.S}px`, height: `${HH * 2 * st.S}px` });
 
-    // uniforms: tasks first, the input bead last
+    // uniforms: only beads that can be seen (plus the lifted one), the input bead last
     bU.fill(0); fU.fill(0); tU.fill(0);
     let n = 0, dragI = -1;
+    const vis = [];
     for (const b of tasks) {
+      if (Math.abs(b.sx) - b.hwC > railH + 4 && b.state !== 'drag') continue;
       if (n >= NB - 1) break;
       const j = b.jelly.step(dt) * 0.035;
       const g = b.grow * b.grow * (3 - 2 * b.grow);
-      bU.set([st.cx + b.x, st.cy + b.y - b.lift * 3, b.hwC * g * (1 + j) * (1 + b.lift * 0.05), HH * g * (1 - j) * (1 + b.lift * 0.05)], n * 4);
+      bU.set([st.cx + b.sx, st.cy + b.y - b.lift * 3, b.hwC * g * (1 + j) * (1 + b.lift * 0.05), HH * g * (1 - j) * (1 + b.lift * 0.05)], n * 4);
       fU.set([b.fill, b.strike, b.flash, b.lift], n * 4);
       tU[n] = textW(b.word) / 2;
       if (b.state === 'drag') dragI = n;
+      vis.push(b);
       n++;
     }
+    for (const b of tasks) if (!vis.includes(b)) b.jelly.step(dt);
     const inI = n;
     const ij = input.jelly.step(dt) * 0.035;
     const ig = input.grow * input.grow * (3 - 2 * input.grow);
-    bU.set([st.cx + input.x + shakeX, st.cy, input.hwC * ig * (1 + ij), HH * ig * (1 - ij)], n * 4);
+    bU.set([st.cx + input.sx, st.cy, input.hwC * ig * (1 + ij), HH * ig * (1 - ij)], n * 4);
     n++;
 
     st.drawPixels(ctx => {
-      for (const b of tasks) b.m.draw(ctx, (b.state === 'pop' ? 0 : 1) * (0.95 - 0.25 * b.strike));
+      ctx_ = ctx;
+      for (const b of vis) {
+        const gain = (b.state === 'pop' ? 0 : 1) * (0.95 - 0.25 * b.strike);
+        if (b.state === 'drag') b.m.draw(ctx, gain); else drawClipped(b.m, gain);
+      }
       caption.draw(ctx, 0.6);
       if (!thumb) {
-        input.m.draw(ctx, 1);
+        drawClipped(input.m, 1);
+        const ea = edgeA(input.sx);
         // inside the input bead: a blinking caret while typing, a quiet plus when idle
         if (focused && (caretT < 0.5 || Math.cos((caretT - 0.5) * Math.PI * 2) > 0)) {
-          ctx.globalAlpha = 0.9;
-          ctx.fillRect(input.x + shakeX + textW(input.text) / 2 + (input.text ? PITCH * 1.2 : 0) - PITCH * 0.35, -PITCH * 2.5, PITCH * 0.7, PITCH * 5);
+          ctx.globalAlpha = 0.9 * ea;
+          ctx.fillRect(input.sx + textW(input.text) / 2 + (input.text ? PITCH * 1.2 : 0) - PITCH * 0.35, -PITCH * 2.5, PITCH * 0.7, PITCH * 5);
           ctx.globalAlpha = 1;
         } else if (!focused && !input.text) {
-          ctx.globalAlpha = 0.5;
-          ctx.fillRect(input.x - PITCH * 2.5, -PITCH / 2, PITCH * 5, PITCH);
-          ctx.fillRect(input.x - PITCH / 2, -PITCH * 2.5, PITCH, PITCH * 5);
+          ctx.globalAlpha = 0.5 * ea;
+          ctx.fillRect(input.sx - PITCH * 2.5, -PITCH / 2, PITCH * 5, PITCH);
+          ctx.fillRect(input.sx - PITCH / 2, -PITCH * 2.5, PITCH, PITCH * 5);
           ctx.globalAlpha = 1;
         }
       }
     });
     st.render(t, (U, gl) => {
-      gl.uniform2f(U.uRail, RAIL[0], RAIL[1]);
+      gl.uniform2f(U.uRail, railH, RH);
       gl.uniform4fv(U.uBead, bU);
       gl.uniform4fv(U.uBeadF, fU);
       gl.uniform1fv(U.uBeadT, tU);
@@ -460,8 +544,15 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       gl.uniform1f(U.uFilOn, filOn);
       gl.uniform1f(U.uHead, head);
       gl.uniform1f(U.uFocus, focused ? 1 : 0);
+      gl.uniform2f(U.uMore, moreL, moreR);
     });
   });
 
-  return { dispose() { st.canvas.removeEventListener('click', onClick); inp?.remove(); st.dispose(); } };
+  return {
+    dispose() {
+      st.canvas.removeEventListener('click', onClick);
+      st.canvas.removeEventListener('wheel', onWheel);
+      inp?.remove(); st.dispose();
+    },
+  };
 }
