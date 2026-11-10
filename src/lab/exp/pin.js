@@ -21,7 +21,7 @@ uniform vec2  uTrayC, uTray;   // tray centre (abs) and half size
 uniform vec4  uKey[11];        // x, y (abs), radius, press
 uniform int   uKeyN;
 uniform vec3  uL;
-uniform float uErr, uMerge, uEnergy, uTh, uCaretOn, uCaretW;
+uniform float uErr, uMerge, uEnergy, uCaretOn, uHead, uHalfLen;
 uniform vec2  uCaretC, uCaretH;
 
 float sdCells(vec2 p) {
@@ -41,7 +41,45 @@ float sdKeys(vec2 p, out int idx) {
   }
   return d;
 }
-float caret(vec2 p) { return filament(p, uCaretC, sdRoundBox(p - uCaretC, uCaretH, 11.0), uTh, uCaretW); }
+// Arc-length position (px, clockwise from the top centre) of the boundary point of a rounded box
+// nearest to q; L returns the perimeter. Lets the light travel at an even speed with an even length
+// around any box, a single cell or the whole strip.
+float perimS(vec2 q, vec2 hs, float r, out float L) {
+  vec2 b = hs - r;
+  const float HP = 1.5707963;
+  float O1 = b.x, O2 = O1 + HP * r, O3 = O2 + 2.0 * b.y, O4 = O3 + HP * r;
+  float O5 = O4 + 2.0 * b.x, O6 = O5 + HP * r, O7 = O6 + 2.0 * b.y, O8 = O7 + HP * r;
+  L = O8 + b.x;
+  vec2 cq = clamp(q, -b, b);
+  vec2 d = q - cq;
+  bool ex = abs(cq.x) >= b.x - 1e-3, ey = abs(cq.y) >= b.y - 1e-3;
+  if (dot(d, d) < 1e-6) {                       // inside the inner rectangle: project onto the nearest side
+    if (b.y - abs(q.y) < b.x - abs(q.x)) { ey = true; ex = false; cq.y = sign(q.y) * b.y; }
+    else { ex = true; ey = false; cq.x = sign(q.x) * b.x; }
+    d = vec2(ex ? sign(q.x) : 0.0, ey ? sign(q.y) : 0.0);
+  }
+  float a = atan(d.y, d.x);                     // design space is y-down: the top is -pi/2
+  if (ex && ey) {
+    if (cq.x > 0.0 && cq.y < 0.0) return O1 + r * (a + HP);
+    if (cq.x > 0.0) return O3 + r * a;
+    if (cq.y > 0.0) return O5 + r * (a - HP);
+    return O7 + r * (a + 2.0 * HP);
+  }
+  if (ey) return cq.y < 0.0 ? (cq.x >= 0.0 ? cq.x : L + cq.x) : O4 + (b.x - cq.x);
+  return cq.x > 0.0 ? O2 + (cq.y + b.y) : O6 + (b.y - cq.y);
+}
+// the toggle's filament, 6.5px outside the box, as a strip of length 2 * uHalfLen around uHead
+float caret(vec2 p) {
+  vec2 q = p - uCaretC;
+  float sd = sdRoundBox(q, uCaretH, 11.0);
+  float L;
+  float s = perimS(q, uCaretH, 11.0, L);
+  float ds = abs(s - uHead * L); ds = min(ds, L - ds);
+  float hl = max(uHalfLen, 0.5);
+  float tang = max(ds - hl, 0.0);
+  float w = (1.8 - 0.9 * smoothstep(0.0, hl, ds)) * smoothstep(0.0, 6.0, uHalfLen + 2.0);
+  return length(vec2(sd - 6.5, tang)) - w;
+}
 
 vec3 scene(vec2 q, vec2 sp, float frost) {
   vec3 col = pageBg(sp);
@@ -143,7 +181,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
   const buzz = pat => { if (!thumb && navigator.userActivation?.hasBeenActive) navigator.vibrate?.(pat); };
 
   // ---------------------------------------------------------------- state
-  let entered = '', busy = false, err = 0, merge = 0, mergeT = 0, caretX = cellX(0), th = 0;
+  let entered = '', busy = false, err = 0, merge = 0, mergeT = 0, caretX = cellX(0), head1 = 0, headS = 0, on1 = 1;
   const cells = [0, 1, 2, 3].map(i => {
     const m = new PixelMatrix({ size: 3.6, swirl: 12, shyR: 12, shyF: 4 });
     m.ox = cellX(i); m.oy = CY;
@@ -195,7 +233,7 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
     later(0.55, () => { entered = ''; busy = false; });
   };
   const unlock = () => {
-    mergeT = 1;
+    mergeT = 1; headS = 0; // the strip's light is born at the top centre
     cells.forEach(c => c.m.set([]));
     st.light = OK;
     later(0.22, () => { strip.set(textCells(thumb ? 'OK' : 'UNLOCKED', thumb ? 4 : 3.6)); st.shock(0, CY); st.burst(0, CY, 22, 1); st.glint(); st.pulse(1); });
@@ -243,10 +281,18 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
 
     // the caret: the toggle's filament circles the cell that comes next
     const n = entered.length;
-    // after the right code it grows from one cell to the whole strip and circles all of it
-    const caretOn = Math.max(!busy && n < 4 && merge < 0.05 ? 1 : 0, merge);
-    caretX += ((merge > 0.02 ? 0 : cellX(Math.min(n, 3))) - caretX) * Math.min(1, dt * 12);
-    th += dt * (reducedMotion ? 0.8 : 2.4 + merge * 1.2);
+    // single cell: circles the cell that comes next. After the right code it fades, and a new light is
+    // born as a point at the top centre of the strip and grows with the merge while it runs around it.
+    const perim = (hx, hy, r) => 4 * (hx - r + hy - r) + 2 * Math.PI * r;
+    const speed = reducedMotion ? 60 : 150;
+    on1 += ((!busy && n < 4 && merge < 0.02 ? 1 : 0) - on1) * Math.min(1, dt * 8);
+    caretX += (cellX(Math.min(n, 3)) - caretX) * Math.min(1, dt * 12);
+    head1 = (head1 + dt * speed / perim(CELL[0], CELL[1], 11)) % 1;
+    const stripW = 1.5 * GAP + GAP / 2 + 1.5, stripH = CELL[1] * 0.94;
+    headS = (headS + dt * speed * 1.4 / perim(stripW, stripH, 11)) % 1;
+    const grow = merge * merge * (3 - 2 * merge);
+    const stripMode = merge > 0.02;
+    const caretOn = stripMode ? 1 : on1;
 
     const cellU = [];
     cells.forEach((c, i) => {
@@ -283,12 +329,18 @@ export async function mount(root, { reducedMotion, thumb = null, demo = false })
       gl.uniform1f(U.uErr, err);
       gl.uniform1f(U.uMerge, merge);
       gl.uniform1f(U.uEnergy, 0.75 + st.kick * 0.25);
-      gl.uniform1f(U.uTh, th);
       gl.uniform1f(U.uCaretOn, caretOn);
-      gl.uniform2f(U.uCaretC, st.cx + caretX, st.cy + CY);
-      const stripW = 1.5 * GAP + GAP / 2 + 1.5;
-      gl.uniform2f(U.uCaretH, CELL[0] + (stripW - CELL[0]) * merge, CELL[1] * (1 - merge * 0.06));
-      gl.uniform1f(U.uCaretW, 0.55 + merge * 0.35);
+      if (stripMode) {
+        gl.uniform2f(U.uCaretC, st.cx, st.cy + CY);
+        gl.uniform2f(U.uCaretH, stripW, stripH);
+        gl.uniform1f(U.uHead, headS);
+        gl.uniform1f(U.uHalfLen, 70 * grow);
+      } else {
+        gl.uniform2f(U.uCaretC, st.cx + caretX, st.cy + CY);
+        gl.uniform2f(U.uCaretH, CELL[0], CELL[1]);
+        gl.uniform1f(U.uHead, head1);
+        gl.uniform1f(U.uHalfLen, 24 * on1);
+      }
     });
   });
 
