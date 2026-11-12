@@ -81,8 +81,12 @@ vec3 scene(vec2 q, vec2 sp, float frost, out float cover) {
     tc *= 1.0 - (1.0 - smoothstep(-6.0, 15.0, ps)) * mix(0.45, 0.16, uTheme);
     col = mix(tc, col, smoothstep(-0.6, 0.6, sdT));
   }
-  // the code: blurred to a ghost under the mist, razor sharp and glowing where the glass is clear
-  col = ink(col, dq, max(frost, fog * 0.97), vec2(0.0), c * inside * (0.25 + 0.75 * uOpen), uL, cover);
+  // the code: nothing of it shows through the mist (not even a ghost, on any screen); it appears only
+  // where the glass has been wiped, soft at the margin of a stroke and razor sharp in its middle
+  vec3 inked = ink(col, dq, max(frost, fog * 0.97), vec2(0.0), c * inside * (0.25 + 0.75 * uOpen), uL, cover);
+  float show = mix(1.0, smoothstep(0.06, 0.6, c), smoothstep(6.0, -2.0, sdP));
+  col = mix(col, inked, show);
+  cover *= show;
 
   // the mist itself: a milky veil with a fine sparkle of condensation, lit by the warmth of the finger
   vec3 fogc = mix(mix(vec3(0.165, 0.185, 0.215), vec3(0.935, 0.94, 0.95), uTheme), uL, 0.1);
