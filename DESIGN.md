@@ -78,6 +78,8 @@ inklusive dessen, was nicht funktioniert hat. Ein neues Element ist fertig, wenn
 - Flache oder schmale Glaskörper bekommen keinen scharfen Glanzpunkt: er schrumpft zu einem Fleck, der wie ein verirrtes Pixel wirkt. Kapseln zeigen stattdessen einen langen Glanzstreifen, eckige Zellen nur weichen Schimmer.
 - Im engen Rand flacher Glaskörper bündelt die Brechung einen hellen Fleck daneben (Lichtschnur, Lichtkante) zu einem Punkt, der wie ein verirrtes Pixel wirkt: die Brechung zum äußersten Rand hin ausblenden (`thick *= smoothstep(0.0, 0.35, u)`).
 
+- Braucht ein Element ein eigenes Feld (z. B. der Beschlag in Frost), simuliert es dieses auf der CPU in einem kleinen Raster und lädt es als eigene Textur auf Einheit 2 hoch (Einheit 0 und 1 gehören der Engine), nur wenn es sich geändert hat. `dispose()` löscht die Textur.
+
 ## 10. Ein Licht (Toggle, Regal und Lab gehören zusammen)
 - **Leitidee:** Es gibt ein Licht, das des Toggles. Alles andere wird davon beleuchtet, angestoßen oder geöffnet.
 - **Gleiches Finish überall:** Die Toggle-Seite nutzt dasselbe Finish wie das Lab (weiß-heiße Lichter, Film-Schulter im Dunkeln, Vignette, Lichtpool am Boden).

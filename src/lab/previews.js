@@ -20,6 +20,11 @@ function pill(c, x, y, w, h) {
 
 export const PREVIEWS = {
   blank(c, t, s) { base(c, s); },
+  frost(c, t, s) {
+    base(c, s);
+    c.fillStyle = 'rgba(190,215,235,0.28)'; c.beginPath(); c.roundRect(s * 0.14, s * 0.3, s * 0.72, s * 0.4, s * 0.1); c.fill();
+    c.strokeStyle = 'rgba(8,8,10,0.85)'; c.lineWidth = s * 0.1; c.lineCap = 'round'; c.beginPath(); c.moveTo(s * 0.28, s * 0.56); c.lineTo(s * 0.5, s * 0.44); c.lineTo(s * 0.72, s * 0.56); c.stroke();
+  },
   hue(c, t, s) {
     base(c, s);
     for (let i = 0; i < 12; i++) { const a = (i / 12) * TAU; c.fillStyle = `hsla(${i * 30 + 180},90%,60%,0.75)`; c.beginPath(); c.arc(s / 2 + Math.cos(a) * s * 0.3, s / 2 + Math.sin(a) * s * 0.3, s * 0.045, 0, TAU); c.fill(); }

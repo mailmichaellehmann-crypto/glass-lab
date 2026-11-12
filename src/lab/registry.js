@@ -96,4 +96,9 @@ export const EXPERIMENTS = [
     how: 'Tap the heart to like, tap again to take it back · press and hold to charge it, let go for a burst · Space or L',
     bg: '#0b0b0b', accent: '#ff3d77', load: () => import('./exp/like.js'),
   },
+  {
+    id: 'frost', thumb: { span: 290, fx: 0, fy: 0, still: { demo: true, wait: 1150 } }, hint: 'Wipe the fogged glass', name: 'Frost', line: 'a fogged pane you wipe to reveal a code',
+    how: 'Wipe the glass with your finger to uncover the code · rest your finger and its warmth clears a circle · Space wipes for you, R fogs it again',
+    bg: '#0b0b0b', accent: '#9fd8ff', load: () => import('./exp/frost.js'),
+  },
 ];
