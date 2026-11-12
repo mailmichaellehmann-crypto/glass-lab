@@ -115,7 +115,7 @@ ein echtes Objekt in einer echten Welt wäre?*
 
 ---
 
-## Das Lab: 21 Interface-Elemente in der DNA des Toggles
+## Das Lab: 20 Interface-Elemente in der DNA des Toggles
 
 Unter dem Toggle liegen sechs Glasperlen. **Jede Perle zeigt das echte Element**, gerendert von seinem
 eigenen Shader. In Ruhe ist es ein Standbild, das beim Laden einmal unsichtbar gerendert und bei einem
@@ -150,7 +150,6 @@ und verfehlte die Idee „ein gewöhnliches UI-Element wird außergewöhnlich“
 | **Hue** | Farbwähler zum Schieben: Der Boden einer runden Mulde ist ein Mosaik aus kleinen farbigen LEDs (Farbton rundum, Weiß in der Mitte). Eine klare Glaskugel liegt darauf und nimmt die Farbe unter sich auf: Glas, Filament, Lichtpool und der Farbcode darunter färben sich mit. LEDs nahe der Kugel leuchten voll, die fernen bleiben gedimmt. Beim Loslassen löst sich ein Tropfen dieser Farbe und setzt sich in die Palette; ein Tropfen dort schickt die Kugel zurück. | Kugel ziehen, Boden antippen, Scrollen/`↑ ↓` Helligkeit, `← →` Farbton, `Enter` speichern |
 | **Like** | Ein Herz, geschliffen aus dickem Glas: flache Tafel, rundum Facetten, die mit dem Zeigerlicht aufblitzen. Antippen lässt Licht aus den beiden Kammern nach außen steigen, Funken fliegen, der Zähler springt, danach schlägt es (lub-dub). Gedrückt halten lädt es auf: Ein Filament schließt sich um das Herz, es schwillt und zittert, beim Loslassen zerspringt die Spannung in einen Schauer kleiner Herzen. | Antippen, gedrückt halten, `Space`/`L` |
 | **Frost** | Freiwischen: Eine dicke Glasscheibe liegt über einem Code und ist beschlagen, die Pixel darunter sind nur zu ahnen. Der Finger wischt den Beschlag weg: Die Spur ist nass und fängt das Licht, feine Schlieren bleiben stehen, am Rand der Spur sammeln sich Wassertropfen, jeder eine winzige Linse. Ein ruhender Finger wärmt einen wachsenden Kreis frei. Das Filament um die Scheibe zeigt den Fortschritt. Ist der Code frei, flieht der Rest des Beschlags in einer Welle; später kriecht er in Zungen von den Rändern zurück und verbirgt einen neuen Code. Der Beschlag ist ein kleines Feld, das auf der CPU simuliert wird (frei/nass pro Zelle). | Wischen, Finger ruhen lassen, `Space` wischt automatisch, `R` beschlägt neu |
-| **Chips** | Filter-Chips als Sieb: Sechs Glaskapseln liegen im Ring um eine Sammellinse, jede über einen in die Seite gravierten Kanal mit ihr verbunden. Unter der Linse liegt alles, was es zu finden gibt, als Schwarm von 48 Pixeln. Ein Tipp flutet die Kapsel von der Mitte aus mit Flüssiglicht (das Wort steht dann dunkel auf hell), ein Lichtfaden läuft durch den Kanal in die Linse, sie schluckt, und die Pixel, die nicht passen, verschwinden, während der Rest zusammenrückt. Die Linse nimmt die Mischfarbe aller aktiven Chips an, ihr Filament schrumpft mit dem Anteil der Treffer. Jeder Chip ist ein Ton, eine Auswahl ein Akkord. Bleibt nichts übrig, wird die Linse rot und schüttelt den Kopf. | Antippen, über mehrere Chips ziehen, Linse antippen leert, `1`–`6`, `0` |
 
 ### Dieselbe Erfahrung wie der Toggle
 - **Umlaufendes Lichtfilament** mit exakt der Bahnlogik des Toggles (`Orbit`): Bei Pour liegt es

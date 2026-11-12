@@ -101,9 +101,4 @@ export const EXPERIMENTS = [
     how: 'Wipe the glass with your finger to uncover the code · rest your finger and its warmth clears a circle · Space wipes for you, R fogs it again',
     bg: '#0b0b0b', accent: '#9fd8ff', load: () => import('./exp/frost.js'),
   },
-  {
-    id: 'chips', thumb: { span: 300, fx: 0, fy: 0, still: { demo: true, wait: 2100 } }, hint: 'Tap the chips · tap the lens to clear', name: 'Chips', line: 'filter chips that sieve a swarm of pixels',
-    how: 'Tap a chip to filter: its light runs into the lens and the pixels that do not match drain away · drag across chips to switch several · tap the lens to clear · 1–6, 0 clears',
-    bg: '#0b0b0b', accent: '#5cd2ff', load: () => import('./exp/chips.js'),
-  },
 ];

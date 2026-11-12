@@ -20,12 +20,6 @@ function pill(c, x, y, w, h) {
 
 export const PREVIEWS = {
   blank(c, t, s) { base(c, s); },
-  chips(c, t, s) {
-    base(c, s);
-    const cols = ['#a98bff', '#5cd2ff', '#ff6a4d', '#ff6fb5', '#ffc94d', '#4dff9a'];
-    for (let i = 0; i < 6; i++) { const a = -Math.PI / 2 + (i / 6) * TAU; c.fillStyle = i % 2 ? cols[i] : 'rgba(255,255,255,0.3)'; pill(c, s / 2 + Math.cos(a) * s * 0.33, s / 2 + Math.sin(a) * s * 0.33, s * 0.17, s * 0.09); c.fill(); }
-    c.strokeStyle = 'rgba(255,255,255,0.6)'; c.lineWidth = s * 0.014; c.beginPath(); c.arc(s / 2, s / 2, s * 0.14, 0, TAU); c.stroke();
-  },
   frost(c, t, s) {
     base(c, s);
     c.fillStyle = 'rgba(190,215,235,0.28)'; c.beginPath(); c.roundRect(s * 0.14, s * 0.3, s * 0.72, s * 0.4, s * 0.1); c.fill();
